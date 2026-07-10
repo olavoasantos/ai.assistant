@@ -12,10 +12,10 @@
   "type": "module",
   "scripts": {
     "build": "vite build",
-    "check": "run-p type:check lint:check format:check test:check",
+    "check": "run-p *:check",
     "clean": "rm -rf dist node_modules .testing",
     "dev": "vite",
-    "fix": "run-p lint:fix format:fix",
+    "fix": "run-p *:fix",
     "format:check": "oxfmt -c .prettierrc.mjs --check src/",
     "format:fix": "oxfmt -c .prettierrc.mjs --write src/",
     "lint:check": "oxlint -c oxlint.json src/",

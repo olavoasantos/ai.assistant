@@ -14,7 +14,7 @@
   "scripts": {
     "check": "run-p type:check lint:check format:check",
     "clean": "rm -rf node_modules",
-    "fix": "run-p lint:fix format:fix",
+    "fix": "run-p *:fix",
     "format:check": "oxfmt -c .prettierrc.mjs --check src/",
     "format:fix": "oxfmt -c .prettierrc.mjs --write src/",
     "lint:check": "oxlint -c oxlint.json src/",
