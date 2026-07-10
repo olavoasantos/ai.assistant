@@ -1,0 +1,41 @@
+{
+  "name": "@local.pkg/{{PACKAGE_NAME}}",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "author": "Olavo Amorim Santos<olavo.santos@micra.dev>",
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "build": "vite build",
+    "check": "run-p type:check lint:check format:check test:check",
+    "clean": "rm -rf dist node_modules .testing",
+    "dev": "vite build --watch",
+    "fix": "run-p lint:fix format:fix",
+    "format:check": "oxfmt -c .prettierrc.mjs --check src/",
+    "format:fix": "oxfmt -c .prettierrc.mjs --write src/",
+    "lint:check": "oxlint -c oxlint.json src/",
+    "lint:fix": "oxlint -c oxlint.json --fix src/",
+    "test:check": "run-p test:unit",
+    "test:unit": "vitest run --config vitest.unit.config.ts",
+    "test:unit:watch": "vitest --config vitest.unit.config.ts",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:integration:watch": "vitest --config vitest.integration.config.ts",
+    "test:performance": "vitest bench --config vitest.bench.config.ts",
+    "type:check": "tsc --noEmit"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@local.pkg/config": "workspace:*",
+    "@types/node": "catalog:",
+    "npm-run-all": "catalog:",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plugin-dts": "catalog:",
+    "vitest": "catalog:"
+  }
+}

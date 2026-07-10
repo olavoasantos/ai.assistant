@@ -1,0 +1,5 @@
+import {mergeConfig} from 'vitest/config';
+import viteConfig from './vite.config';
+import e2eConfig from '@local.pkg/config/testing/e2e';
+
+export default mergeConfig(viteConfig, e2eConfig);

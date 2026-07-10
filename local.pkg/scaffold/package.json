@@ -1,0 +1,32 @@
+{
+  "name": "@local.pkg/scaffold",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Scaffolds new packages, apps, and examples in the monorepo",
+  "license": "MIT",
+  "bin": {
+    "scaffold": "./src/cli.ts"
+  },
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "check": "run-p type:check lint:check format:check",
+    "clean": "rm -rf node_modules",
+    "fix": "run-p lint:fix format:fix",
+    "format:check": "oxfmt -c .prettierrc.mjs --check src/",
+    "format:fix": "oxfmt -c .prettierrc.mjs --write src/",
+    "lint:check": "oxlint -c oxlint.json src/",
+    "lint:fix": "oxlint -c oxlint.json --fix src/",
+    "type:check": "tsc --noEmit"
+  },
+  "devDependencies": {
+    "@local.pkg/config": "workspace:*",
+    "@types/node": "catalog:",
+    "npm-run-all": "catalog:",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:"
+  }
+}

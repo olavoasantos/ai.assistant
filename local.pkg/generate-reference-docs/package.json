@@ -1,0 +1,35 @@
+{
+  "name": "@local.pkg/generate-reference-docs",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Extracts docblocks and type declarations from TypeScript source files and generates reference documentation",
+  "license": "MIT",
+  "bin": {
+    "generate-reference-docs": "./src/cli.ts"
+  },
+  "type": "module",
+  "exports": {
+    ".": "./src/index.ts"
+  },
+  "scripts": {
+    "check": "run-p type:check lint:check format:check",
+    "clean": "rm -rf node_modules",
+    "fix": "run-p lint:fix format:fix",
+    "format:check": "oxfmt -c .prettierrc.mjs --check src/",
+    "format:fix": "oxfmt -c .prettierrc.mjs --write src/",
+    "lint:check": "oxlint -c oxlint.json src/",
+    "lint:fix": "oxlint -c oxlint.json --fix src/",
+    "type:check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "oxc-parser": "^0.127.0"
+  },
+  "devDependencies": {
+    "@local.pkg/config": "workspace:*",
+    "@types/node": "catalog:",
+    "npm-run-all": "catalog:",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:"
+  }
+}

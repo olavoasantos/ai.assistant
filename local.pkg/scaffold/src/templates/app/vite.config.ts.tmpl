@@ -1,0 +1,7 @@
+import {createAppViteConfig} from '@local.pkg/config/build/app';
+import pkg from './package.json' with {type: 'json'};
+
+export default createAppViteConfig({
+  pkg,
+  plugins: [],
+});

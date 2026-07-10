@@ -1,0 +1,33 @@
+{
+  "name": "@local.pkg/config",
+  "version": "0.0.0",
+  "private": true,
+  "description": "Shared build, test, and lint configuration for monorepo packages",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    "./build/package": "./build/package.ts",
+    "./build/app": "./build/app.ts",
+    "./testing/unit": "./testing/unit.ts",
+    "./testing/integration": "./testing/integration.ts",
+    "./testing/e2e": "./testing/e2e.ts",
+    "./testing/bench": "./testing/bench.ts",
+    "./typescript/base.json": "./typescript/base.json",
+    "./linting/oxlint.json": "./linting/oxlint.json",
+    "./formatting/oxfmt.mjs": "./formatting/oxfmt.mjs"
+  },
+  "scripts": {
+    "clean": "rm -rf node_modules"
+  },
+  "dependencies": {
+    "@types/node": "catalog:",
+    "@vitest/coverage-v8": "catalog:",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
+    "terser": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plugin-dts": "catalog:",
+    "vitest": "catalog:"
+  }
+}
