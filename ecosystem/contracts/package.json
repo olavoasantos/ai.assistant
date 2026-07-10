@@ -29,6 +29,11 @@
       "import": "./dist/events/index.js",
       "require": "./dist/events/index.cjs"
     },
+    "./executable": {
+      "types": "./dist/executable/index.d.ts",
+      "import": "./dist/executable/index.js",
+      "require": "./dist/executable/index.cjs"
+    },
     "./plugins": {
       "types": "./dist/plugins/index.d.ts",
       "import": "./dist/plugins/index.js",

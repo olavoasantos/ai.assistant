@@ -520,7 +520,7 @@ Rules:
 A base class accepts an optional lifecycle callbacks map. Subclasses provide their own callbacks to customize what happens during each lifecycle phase without overriding methods.
 
 ```typescript
-new BaseApplication({
+new Executable({
   lifecycles: {
     create: async () => {
       /* register services */
@@ -561,7 +561,7 @@ Structured loggers expose one method per severity level:
 
 ```typescript
 logger.info('Request received', {
-  tags: {route: 'matches'},
+  tags: {route: 'sessions'},
   metadata: {requestId: 'request:x8f2k9ab'},
 });
 ```
@@ -587,7 +587,7 @@ analytics.track('signup', {
   tags: {surface: 'home'},
   properties: {source: 'hero'},
 });
-analytics.page('/matches/123', {title: 'Brazil 2–1 Argentina'});
+analytics.page('/sessions/123', {title: 'Session details'});
 analytics.identify('user:123', {properties: {plan: 'personal'}});
 ```
 

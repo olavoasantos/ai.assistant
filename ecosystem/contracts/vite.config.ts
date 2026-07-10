@@ -14,6 +14,7 @@ export default defineConfig({
         index: 'index.ts',
         'error/index': 'error/index.ts',
         'events/index': 'events/index.ts',
+        'executable/index': 'executable/index.ts',
         'plugins/index': 'plugins/index.ts',
         'renderable/index': 'renderable/index.ts',
         'service-container/index': 'service-container/index.ts',

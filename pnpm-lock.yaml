@@ -224,6 +224,70 @@ importers:
         specifier: 'catalog:'
         version: 4.1.10(@types/node@26.1.1)(@vitest/coverage-v8@4.1.10)(vite@8.1.4(@types/node@26.1.1)(terser@5.49.0)(yaml@2.9.0))
 
+  ecosystem/sources/executable/executable:
+    dependencies:
+      '@ai.assistant/error':
+        specifier: workspace:*
+        version: link:../../error/error
+      '@ai.assistant/event-emitter':
+        specifier: workspace:*
+        version: link:../../events/event-emitter
+      '@ai.assistant/plugin-engine':
+        specifier: workspace:*
+        version: link:../../plugins/plugin-engine
+      '@ai.assistant/service-container':
+        specifier: workspace:*
+        version: link:../../service-container/service-container
+      '@ai.assistant/telemetry':
+        specifier: workspace:*
+        version: link:../../telemetry/telemetry
+      '@ai.assistant/validation':
+        specifier: workspace:*
+        version: link:../../validation/validation
+      '@preact/signals-core':
+        specifier: 'catalog:'
+        version: 1.14.4
+      preact:
+        specifier: 'catalog:'
+        version: 10.29.7
+    devDependencies:
+      '@ai.assistant/contracts':
+        specifier: workspace:*
+        version: link:../../../contracts
+      '@ai.assistant/tests':
+        specifier: workspace:*
+        version: link:../../../tests
+      '@local.pkg/config':
+        specifier: workspace:*
+        version: link:../../../../internal/config
+      '@local.pkg/generate-reference-docs':
+        specifier: workspace:*
+        version: link:../../../../internal/generate-reference-docs
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.1.1
+      npm-run-all:
+        specifier: 'catalog:'
+        version: 4.1.5
+      oxfmt:
+        specifier: 'catalog:'
+        version: 0.58.0
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.73.0(oxlint-tsgolint@0.24.0)
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vite:
+        specifier: 'catalog:'
+        version: 8.1.4(@types/node@26.1.1)(terser@5.49.0)(yaml@2.9.0)
+      vite-plugin-dts:
+        specifier: 'catalog:'
+        version: 5.0.3(@microsoft/api-extractor@7.58.2(@types/node@26.1.1))(rolldown@1.1.5)(typescript@7.0.2)(vite@8.1.4(@types/node@26.1.1)(terser@5.49.0)(yaml@2.9.0))
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.10(@types/node@26.1.1)(@vitest/coverage-v8@4.1.10)(vite@8.1.4(@types/node@26.1.1)(terser@5.49.0)(yaml@2.9.0))
+
   ecosystem/sources/helpers/helpers:
     devDependencies:
       '@ai.assistant/contracts':
@@ -263,7 +327,7 @@ importers:
         specifier: 'catalog:'
         version: 4.1.10(@types/node@26.1.1)(@vitest/coverage-v8@4.1.10)(vite@8.1.4(@types/node@26.1.1)(terser@5.49.0)(yaml@2.9.0))
 
-  ecosystem/sources/plugins/plugins-engine:
+  ecosystem/sources/plugins/plugin-engine:
     dependencies:
       '@ai.assistant/error':
         specifier: workspace:*

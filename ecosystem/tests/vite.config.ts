@@ -15,6 +15,7 @@ export default defineConfig({
         'error/index': 'error/index.ts',
         'error/mocks': 'error/mocks.ts',
         'events/index': 'events/index.ts',
+        'executable/index': 'executable/index.ts',
         'helpers/index': 'helpers/index.ts',
         'plugins/index': 'plugins/index.ts',
         'service-container/index': 'service-container/index.ts',
