@@ -5,36 +5,40 @@
   "author": "Olavo Amorim Santos<olavo.santos@micra.dev>",
   "repository": {
     "type": "git",
-    "url": "https://github.com/{{ORG}}/{{NAME}}.git"
+    "url": "https://github.com/olavoasantos/ai.assistant.git"
   },
   "type": "module",
   "scripts": {
-    "build": "pnpm -r run build",
-    "check": "pnpm build && pnpm -r run check",
-    "clean": "pnpm -r run clean",
-    "dev": "pnpm -r run dev",
+    "build": "pnpm -r --aggregate-output --if-present --loglevel error run build",
+    "check": "pnpm -r --aggregate-output --if-present --loglevel error run check",
+    "clean": "pnpm -r --aggregate-output --if-present --loglevel error run clean",
     "dependencies:update": "pnpm up --latest --recursive --interactive",
-    "docs:generate": "pnpm -r run docs:generate",
+    "dev": "pnpm -r --aggregate-output --if-present --loglevel error run dev",
+    "docs:generate": "pnpm -r --aggregate-output --if-present --loglevel error run docs:generate",
     "fix": "run-p *:fix",
-    "format:check": "pnpm -r run format:check",
-    "format:fix": "pnpm -r run format:fix",
-    "lint:check": "pnpm -r run lint:check",
-    "lint:fix": "pnpm -r run lint:fix",
+    "format:check": "pnpm -r --aggregate-output --if-present --loglevel error run format:check",
+    "format:fix": "pnpm -r --aggregate-output --if-present --loglevel error run format:fix",
+    "infra:build": "pnpm infra:start --build",
+    "infra:certificates": "mkcert -key-file infrastructure/nginx/etc/nginx/certs/key.pem -cert-file infrastructure/nginx/etc/nginx/certs/cert.pem aiassistant.test '*.aiassistant.test'",
+    "infra:start": "docker-compose $(tr '\\n' ' ' < .services) up -d",
+    "infra:stop": "docker-compose $(tr '\\n' ' ' < .services) down",
+    "lint:check": "pnpm -r --aggregate-output --if-present --loglevel error run lint:check",
+    "lint:fix": "pnpm -r --aggregate-output --if-present --loglevel error run lint:fix",
     "prepare": "husky .config/git-hooks",
-    "test:check": "pnpm -r run test:check",
-    "test:check:all": "pnpm -r run test:check:all",
-    "test:unit": "pnpm -r run test:unit",
-    "test:unit:watch": "pnpm -r run test:unit:watch",
-    "test:integration": "pnpm -r run test:integration",
-    "test:integration:watch": "pnpm -r run test:integration:watch",
-    "test:performance": "pnpm -r run test:performance",
-    "test:performance:watch": "pnpm -r run test:performance:watch",
-    "test:performance:record": "pnpm -r run test:performance:record",
-    "test:performance:compare": "pnpm -r run test:performance:compare",
-    "type:check": "pnpm -r run type:check",
-    "version:create": "changeset",
+    "scaffold": "node --experimental-strip-types --experimental-transform-types --no-warnings internal/scaffold/src/cli.ts",
+    "test:check:all": "pnpm -r --aggregate-output --if-present --loglevel error run test:check:all",
+    "test:check": "pnpm -r --aggregate-output --if-present --loglevel error run test:check",
+    "test:integration:watch": "pnpm -r --aggregate-output --if-present --loglevel error run test:integration:watch",
+    "test:integration": "pnpm -r --aggregate-output --if-present --loglevel error run test:integration",
+    "test:performance:compare": "pnpm -r --aggregate-output --if-present --loglevel error run test:performance:compare",
+    "test:performance:record": "pnpm -r --aggregate-output --if-present --loglevel error run test:performance:record",
+    "test:performance:watch": "pnpm -r --aggregate-output --if-present --loglevel error run test:performance:watch",
+    "test:performance": "pnpm -r --aggregate-output --if-present --loglevel error run test:performance",
+    "test:unit:watch": "pnpm -r --aggregate-output --if-present --loglevel error run test:unit:watch",
+    "test:unit": "pnpm -r --aggregate-output --if-present --loglevel error run test:unit",
+    "type:check": "pnpm -r --aggregate-output --if-present --loglevel error run type:check",
     "version:bump": "changeset version",
-    "scaffold": "node --experimental-strip-types --experimental-transform-types --no-warnings local.pkg/scaffold/src/cli.ts"
+    "version:create": "changeset"
   },
   "devDependencies": {
     "@changesets/cli": "^2.30.0",
@@ -57,5 +61,5 @@
       "oxfmt check -c .prettierrc.mjs --no-error-on-unmatched-pattern"
     ]
   },
-  "packageManager": "pnpm@10.33.0"
+  "packageManager": "pnpm@11.11.0+sha512.4463f65fd80ed80d69bc1d4bf163ee94f605c7380fc318bb5b2ebe15f8cd12d49c51a4d59e951b401e764d3b6ca751cbf51bc50ed7001a6bcb4935e684c34882"
 }

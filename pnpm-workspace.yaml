@@ -1,8 +1,10 @@
 packages:
-  - 'apps/*'
-  - 'examples/*'
-  - 'local.pkg/*'
-  - 'packages/*'
+  - 'clients/*'
+  - 'domains/*'
+  - 'ecosystem/contracts'
+  - 'ecosystem/sources/*/*'
+  - 'ecosystem/tests'
+  - 'internal/*'
 allowBuilds:
   esbuild: true
 

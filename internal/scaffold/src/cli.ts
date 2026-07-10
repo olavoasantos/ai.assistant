@@ -7,31 +7,31 @@ const validTypes = Object.keys(SCAFFOLD_TYPES).join(', ');
 
 if (args.includes('--help') || args.includes('-h') || args.length === 0) {
   console.log(`
-  scaffold — Create a new package, app, or example in the monorepo.
+  scaffold — Create a new client, implementation, or local package in the monorepo.
 
   Usage:
-    scaffold <type> <name> [--description <text>]
+    scaffold <type> <name> [entity] [--description <text>]
 
   Types:
-    package    → packages/<name>/
-    app        → apps/<name>/
-    example    → examples/<name>/
-    local      → local.pkg/<name>/
+    client                 → clients/<name>/
+    implementation         → ecosystem/sources/<entity>/<name>/
+    local                  → internal/<name>/
 
   Options:
     --description <text>   Short description (default: "")
     --help                 Show this help message
 
   Examples:
-    scaffold package ui
-    scaffold app docs-site --description "Documentation website"
-    scaffold example basic-usage
+    scaffold implementation error error
+    scaffold client docs-site --description "Documentation website"
+    scaffold local docs-generator
 `);
   process.exit(0);
 }
 
 const type = args[0] as keyof typeof SCAFFOLD_TYPES;
 const name = args[1];
+const entity = args[2];
 const descIndex = args.indexOf('--description');
 const description = descIndex > -1 ? (args[descIndex + 1] ?? '') : '';
 
@@ -45,20 +45,17 @@ if (!name) {
   process.exit(1);
 }
 
+if (type === 'implementation' && !entity) {
+  console.error('Error: Entity is required for implementation type.');
+  process.exit(1);
+}
+
 try {
-  const targetDir = scaffold(type, name, description);
+  const targetDir = scaffold({type, name, description, entity});
   console.log(`Created ${type} at ${targetDir}`);
   console.log(`\nNext steps:`);
   console.log(`  pnpm install`);
-  if (type === 'package') {
-    console.log(`  cd packages/${name}`);
-  } else if (type === 'app') {
-    console.log(`  cd apps/${name}`);
-  } else if (type === 'local') {
-    console.log(`  cd local.pkg/${name}`);
-  } else {
-    console.log(`  cd examples/${name}`);
-  }
+  console.log(`  cd ${targetDir}`);
 } catch (err: any) {
   console.error(`Error: ${err.message}`);
   process.exit(1);

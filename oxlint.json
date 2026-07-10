@@ -1,4 +1,4 @@
 {
   "$schema": "./node_modules/oxlint/configuration_schema.json",
-  "extends": ["./local.pkg/config/linting/oxlint.json"]
+  "extends": ["./internal/config/linting/oxlint.json"]
 }

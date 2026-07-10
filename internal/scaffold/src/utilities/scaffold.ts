@@ -4,24 +4,26 @@ import {SCAFFOLD_TYPES, PLACEHOLDERS} from '../constants.ts';
 import {readMonorepoMeta} from './readMonorepoMeta.ts';
 import {copyTemplate} from './copyTemplate.ts';
 
+export interface ScaffoldOptions {
+  type: keyof typeof SCAFFOLD_TYPES;
+  name: string;
+  description: string;
+  entity?: string;
+  rootDir?: string;
+}
+
 /**
- * Scaffolds a new workspace package, app, or example from a template.
+ * Scaffolds a supported workspace entry from a template.
  *
- * @param type - The scaffold type (`'package'`, `'app'`, or `'example'`).
- * @param name - The name for the new workspace entry (e.g. `'my-lib'`).
- * @param description - A short description.
- * @param rootDir - The monorepo root directory. Defaults to `process.cwd()`.
+ * @param options - The scaffold options.
  * @returns The absolute path to the created directory.
  */
-export function scaffold(
-  type: keyof typeof SCAFFOLD_TYPES,
-  name: string,
-  description: string,
-  rootDir?: string,
-): string {
+export function scaffold({type, name, description, entity, rootDir}: ScaffoldOptions): string {
   const root = resolve(rootDir ?? process.cwd());
   const targetParent = SCAFFOLD_TYPES[type];
-  const targetDir = join(root, targetParent, name);
+  const targetDir = entity
+    ? join(root, targetParent, entity, name)
+    : join(root, targetParent, name);
 
   const thisFile = fileURLToPath(import.meta.url);
   const templateDir = join(dirname(thisFile), '..', 'templates', type);
@@ -33,6 +35,7 @@ export function scaffold(
     [PLACEHOLDERS.PACKAGE_DESCRIPTION, description],
     [PLACEHOLDERS.NAME, meta.name],
     [PLACEHOLDERS.ORG, meta.org],
+    [PLACEHOLDERS.ENTITY, entity ?? ''],
   ]);
 
   copyTemplate(templateDir, targetDir, replacements);

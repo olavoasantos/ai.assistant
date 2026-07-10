@@ -93,4 +93,4 @@ The tool requires that the package has an `exports` field (or `main`/`types`/`mo
 
 ### AI Disclosure
 
-Significant portions of this codebase were written with AI coding agents via [pi](https://github.com/badlogic/pi-mono), using Claude Opus 4.6, GPT-5.4, and Gemini 3.1 Pro Preview. All AI-generated code was reviewed and approved by a human contributor.
+Significant portions of this codebase were written with AI coding agents via [pi](https://github.com/badlogic/pi-mono), using OpenAI GPT, Z.ai's GLM, and other models. All AI-generated code was reviewed and approved by a human contributor.

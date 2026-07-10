@@ -1,13 +1,13 @@
 <p align="center">
-  <img src="https://github.com/olavoasantos/{{ORG}}/blob/latest/.config/assets/logo.png" style="width: 200px; max-width: 25%" />
+  <img src="https://github.com/olavoasantos/ai.assistant/blob/latest/.config/assets/logo.png" style="width: 200px; max-width: 25%" />
 </p>
 
 <h1 align="center">@local.pkg/scaffold</h1>
 
 <p align="center">
-  <a href="https://github.com/olavoasantos/{{ORG}}/blob/latest/docs">Documentation</a> •
-  <a href="https://github.com/olavoasantos/{{ORG}}/blob/latest/CONTRIBUTING.md">Contributing</a> •
-  <a href="https://github.com/olavoasantos/{{ORG}}/blob/latest/CODE_OF_CONDUCT.md">Code of Conduct</a>
+  <a href="https://github.com/olavoasantos/ai.assistant/blob/latest/docs">Documentation</a> •
+  <a href="https://github.com/olavoasantos/ai.assistant/blob/latest/CONTRIBUTING.md">Contributing</a> •
+  <a href="https://github.com/olavoasantos/ai.assistant/blob/latest/CODE_OF_CONDUCT.md">Code of Conduct</a>
 </p>
 
 <p align="center">
@@ -122,4 +122,4 @@ scaffold('package', 'my-lib', 'A utility library');
 
 ### AI Disclosure
 
-Significant portions of this codebase were written with AI coding agents via [pi](https://github.com/badlogic/pi-mono), using Claude Opus 4.6, GPT-5.4, and Gemini 3.1 Pro Preview. All AI-generated code was reviewed and approved by a human contributor.
+Significant portions of this codebase were written with AI coding agents via [pi](https://github.com/badlogic/pi-mono), using OpenAI GPT, Z.ai's GLM, and other models. All AI-generated code was reviewed and approved by a human contributor.

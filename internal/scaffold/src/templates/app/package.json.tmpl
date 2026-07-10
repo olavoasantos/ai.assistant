@@ -1,29 +1,20 @@
 {
-  "name": "@{{NAME}}/{{PACKAGE_NAME}}",
+  "name": "@ai.assistant/{{PACKAGE_NAME}}",
   "version": "0.0.0",
+  "private": true,
   "license": "MIT",
   "author": "Olavo Amorim Santos<olavo.santos@micra.dev>",
   "repository": {
     "type": "git",
-    "url": "https://github.com/{{ORG}}/{{NAME}}.git",
-    "directory": "packages/{{PACKAGE_NAME}}"
+    "url": "https://github.com/olavoasantos/ai.assistant.git",
+    "directory": "apps/{{PACKAGE_NAME}}"
   },
   "type": "module",
-  "exports": {
-    ".": {
-      "types": "./dist/index.d.ts",
-      "import": "./dist/index.js",
-      "require": "./dist/index.cjs"
-    },
-    "./register": "./dist/register.d.ts"
-  },
-  "files": ["dist"],
   "scripts": {
-    "build": "vite build && cp src/register.d.ts dist/register.d.ts",
+    "build": "vite build",
     "check": "run-p type:check lint:check format:check test:check",
     "clean": "rm -rf dist node_modules .testing",
-    "dev": "vite build --watch",
-    "docs:generate": "node --experimental-strip-types --experimental-transform-types --no-warnings node_modules/@local.pkg/generate-reference-docs/src/cli.ts",
+    "dev": "vite",
     "fix": "run-p lint:fix format:fix",
     "format:check": "oxfmt -c .prettierrc.mjs --check src/",
     "format:fix": "oxfmt -c .prettierrc.mjs --write src/",
@@ -34,21 +25,19 @@
     "test:unit:watch": "vitest --config vitest.unit.config.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
     "test:integration:watch": "vitest --config vitest.integration.config.ts",
+    "test:e2e": "vitest run --config vitest.e2e.config.ts",
     "test:performance": "vitest bench --config vitest.bench.config.ts",
     "type:check": "tsc --noEmit"
   },
   "dependencies": {},
   "devDependencies": {
-    "@{{ORG}}/contracts": "workspace:*",
     "@local.pkg/config": "workspace:*",
-    "@local.pkg/generate-reference-docs": "workspace:*",
     "@types/node": "catalog:",
     "npm-run-all": "catalog:",
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
     "typescript": "catalog:",
     "vite": "catalog:",
-    "vite-plugin-dts": "catalog:",
     "vitest": "catalog:"
   }
 }

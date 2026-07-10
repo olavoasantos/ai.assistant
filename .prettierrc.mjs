@@ -1,4 +1,4 @@
-import baseConfig from './local.pkg/config/formatting/oxfmt.mjs';
+import baseConfig from './internal/config/formatting/oxfmt.mjs';
 
 export default {
   ...baseConfig,
