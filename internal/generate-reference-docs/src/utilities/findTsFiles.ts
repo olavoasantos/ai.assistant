@@ -25,5 +25,5 @@ export function findTsFiles(dir: string): string[] {
   }
 
   walk(dir);
-  return results.sort();
+  return results.toSorted();
 }

@@ -36,8 +36,8 @@ export function expandWildcardEntryPoint(
     ['/build/', '/src/'],
     ['/out/', '/src/'],
   ]) {
-    if (baseDir.includes(String(from))) {
-      candidateDirs.push(baseDir.replace(String(from), String(to)));
+    if (baseDir.includes(from)) {
+      candidateDirs.push(baseDir.replace(from, to));
     }
   }
 

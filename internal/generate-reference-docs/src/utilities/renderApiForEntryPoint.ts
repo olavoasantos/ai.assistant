@@ -48,7 +48,7 @@ export function renderApiForEntryPoint(
 
   const allDeclarations: Declaration[] = [];
   const allImports: ImportReference[] = [];
-  const publicFiles = [...localPublic.entries()].sort(([a], [b]) => a.localeCompare(b));
+  const publicFiles = [...localPublic.entries()].toSorted(([a], [b]) => a.localeCompare(b));
 
   // First pass: collect all declarations and imports
   for (const [absFilePath, names] of publicFiles) {

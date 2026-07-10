@@ -10,5 +10,5 @@ import {walkForTypeRefs} from './walkForTypeRefs.ts';
 export function collectTypeReferences(node: any): string[] {
   const refs = new Set<string>();
   walkForTypeRefs(node, refs);
-  return [...refs].sort();
+  return [...refs].toSorted();
 }

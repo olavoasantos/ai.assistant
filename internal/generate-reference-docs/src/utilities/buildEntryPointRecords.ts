@@ -40,7 +40,7 @@ export function buildEntryPointRecords(
         records.push({
           subpath: concreteSubpath,
           resolvedPaths: [relative(sourceDir, filePath)],
-          exportedNames: [...allNames].sort(),
+          exportedNames: [...allNames].toSorted(),
         });
       }
     } else {
@@ -61,7 +61,7 @@ export function buildEntryPointRecords(
       records.push({
         subpath,
         resolvedPaths: [relative(sourceDir, resolved)],
-        exportedNames: [...allNames].sort(),
+        exportedNames: [...allNames].toSorted(),
       });
     }
   }

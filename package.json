@@ -41,24 +41,26 @@
     "version:create": "changeset"
   },
   "devDependencies": {
-    "@changesets/cli": "^2.30.0",
+    "@changesets/cli": "^2.31.0",
     "@types/node": "catalog:",
+    "@typescript/typescript6": "catalog:",
     "changesets": "^1.0.2",
     "husky": "^9.1.7",
-    "lint-staged": "^16.4.0",
+    "lint-staged": "^17.0.8",
     "npm-run-all": "catalog:",
     "oxfmt": "catalog:",
     "oxlint": "catalog:",
+    "oxlint-tsgolint": "catalog:",
     "typescript": "catalog:"
   },
   "lint-staged": {
     "*.{ts,tsx,md}": [
-      "oxlint --fix",
+      "oxlint -c oxlint.json --fix --no-error-on-unmatched-pattern",
       "oxfmt -c .prettierrc.mjs --no-error-on-unmatched-pattern --write"
     ],
     "*.{js,jsx,json,css,yaml,yml}": [
-      "oxlint --fix",
-      "oxfmt check -c .prettierrc.mjs --no-error-on-unmatched-pattern"
+      "oxlint -c oxlint.json --fix --no-error-on-unmatched-pattern",
+      "oxfmt check -c .prettierrc.mjs --no-error-on-unmatched-pattern --write"
     ]
   },
   "packageManager": "pnpm@11.11.0+sha512.4463f65fd80ed80d69bc1d4bf163ee94f605c7380fc318bb5b2ebe15f8cd12d49c51a4d59e951b401e764d3b6ca751cbf51bc50ed7001a6bcb4935e684c34882"

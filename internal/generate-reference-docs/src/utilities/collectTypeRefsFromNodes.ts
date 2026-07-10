@@ -11,6 +11,6 @@ export function collectTypeRefsFromNodes(...nodes: any[]): string[] | undefined 
   for (const node of nodes) {
     if (node) allRefs.push(...collectTypeReferences(node));
   }
-  const unique = [...new Set(allRefs)].sort();
+  const unique = [...new Set(allRefs)].toSorted();
   return unique.length > 0 ? unique : undefined;
 }
