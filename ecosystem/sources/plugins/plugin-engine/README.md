@@ -2,7 +2,7 @@
   <img src="https://github.com/olavoasantos/ai.assistant/blob/latest/.config/assets/logo.png" style="width: 200px; max-width: 25%" />
 </p>
 
-<h1 align="center">@ai.assistant/plugins-engine</h1>
+<h1 align="center">@ai.assistant/plugin-engine</h1>
 
 <p align="center">
   <a href="https://github.com/olavoasantos/ai.assistant/blob/latest/docs">Documentation</a> •
@@ -20,7 +20,7 @@
 ## Usage
 
 ```shell
-pnpm install @ai.assistant/plugins-engine
+pnpm install @ai.assistant/plugin-engine
 ```
 
 ## Contributors

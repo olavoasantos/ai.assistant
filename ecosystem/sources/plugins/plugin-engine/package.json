@@ -1,5 +1,5 @@
 {
-  "name": "@ai.assistant/plugins-engine",
+  "name": "@ai.assistant/plugin-engine",
   "version": "0.0.0",
   "private": true,
   "license": "MIT",
@@ -7,7 +7,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/olavoasantos/ai.assistant.git",
-    "directory": "ecosystem/sources/plugins/plugins-engine"
+    "directory": "ecosystem/sources/plugins/plugin-engine"
   },
   "files": [
     "dist"

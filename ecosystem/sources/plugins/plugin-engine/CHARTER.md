@@ -1,4 +1,4 @@
-# Charter — @ai.assistant/plugins-engine implementation
+# Charter — @ai.assistant/plugin-engine implementation
 
 ## Purpose
 
