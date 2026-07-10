@@ -157,11 +157,11 @@ Rules:
 - The prefix describes the subsystem or purpose, not the entity type.
 - Default prefix is `'ai.assistant'` when no argument is provided.
 
-**Global identifiers (GIDs)** — durable, cross-boundary, self-describing. Used for domain entities (matches, people, teams, venues) and source references during data ingestion.
+**Global identifiers (GIDs)** — durable, cross-boundary, self-describing. Used for domain entities (sessions, people, teams, channels) and source references during data ingestion.
 
 ```typescript
-generateGid('Match'); // → "gid://ai.assistant/Match/a3b9c1d2"
-generateGid({resource: 'Match', id: 12345}); // → "gid://ai.assistant/Match/12345"
+generateGid('Session'); // → "gid://ai.assistant/Session/a3b9c1d2"
+generateGid({resource: 'Session', id: 12345}); // → "gid://ai.assistant/Session/12345"
 generateGid({owner: 'claude-code', resource: 'Session', id: 204}); // → "gid://claude-code/Session/204"
 ```
 

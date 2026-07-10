@@ -1,0 +1,128 @@
+{
+  "name": "@ai.assistant/helpers",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "author": "Olavo Amorim Santos<olavo.santos@micra.dev>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/olavoasantos/ai.assistant.git",
+    "directory": "ecosystem/sources/helpers/helpers"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./types/Constructor": {
+      "types": "./dist/types/Constructor.d.ts",
+      "import": "./dist/types/Constructor.js",
+      "require": "./dist/types/Constructor.cjs"
+    },
+    "./types/DotNotation": {
+      "types": "./dist/types/DotNotation.d.ts",
+      "import": "./dist/types/DotNotation.js",
+      "require": "./dist/types/DotNotation.cjs"
+    },
+    "./types/MaybeAsync": {
+      "types": "./dist/types/MaybeAsync.d.ts",
+      "import": "./dist/types/MaybeAsync.js",
+      "require": "./dist/types/MaybeAsync.cjs"
+    },
+    "./types/Optional": {
+      "types": "./dist/types/Optional.d.ts",
+      "import": "./dist/types/Optional.js",
+      "require": "./dist/types/Optional.cjs"
+    },
+    "./utilities/capitalize": {
+      "types": "./dist/utilities/capitalize.d.ts",
+      "import": "./dist/utilities/capitalize.js",
+      "require": "./dist/utilities/capitalize.cjs"
+    },
+    "./utilities/defer": {
+      "types": "./dist/utilities/defer.d.ts",
+      "import": "./dist/utilities/defer.js",
+      "require": "./dist/utilities/defer.cjs"
+    },
+    "./utilities/deletePath": {
+      "types": "./dist/utilities/deletePath.d.ts",
+      "import": "./dist/utilities/deletePath.js",
+      "require": "./dist/utilities/deletePath.cjs"
+    },
+    "./utilities/generateGid": {
+      "types": "./dist/utilities/generateGid.d.ts",
+      "import": "./dist/utilities/generateGid.js",
+      "require": "./dist/utilities/generateGid.cjs"
+    },
+    "./utilities/generateId": {
+      "types": "./dist/utilities/generateId.d.ts",
+      "import": "./dist/utilities/generateId.js",
+      "require": "./dist/utilities/generateId.cjs"
+    },
+    "./utilities/generateRandomString": {
+      "types": "./dist/utilities/generateRandomString.d.ts",
+      "import": "./dist/utilities/generateRandomString.js",
+      "require": "./dist/utilities/generateRandomString.cjs"
+    },
+    "./utilities/getPath": {
+      "types": "./dist/utilities/getPath.d.ts",
+      "import": "./dist/utilities/getPath.js",
+      "require": "./dist/utilities/getPath.cjs"
+    },
+    "./utilities/globToRegex": {
+      "types": "./dist/utilities/globToRegex.d.ts",
+      "import": "./dist/utilities/globToRegex.js",
+      "require": "./dist/utilities/globToRegex.cjs"
+    },
+    "./utilities/setPath": {
+      "types": "./dist/utilities/setPath.d.ts",
+      "import": "./dist/utilities/setPath.js",
+      "require": "./dist/utilities/setPath.cjs"
+    },
+    "./utilities/slugify": {
+      "types": "./dist/utilities/slugify.d.ts",
+      "import": "./dist/utilities/slugify.js",
+      "require": "./dist/utilities/slugify.cjs"
+    },
+    "./register": "./dist/register.d.ts"
+  },
+  "scripts": {
+    "build": "vite build && cp src/register.d.ts dist/register.d.ts",
+    "check": "run-p type:check lint:check format:check test:check",
+    "clean": "rm -rf dist node_modules .testing",
+    "dev": "vite build --watch",
+    "docs:generate": "node --experimental-strip-types --experimental-transform-types --no-warnings node_modules/@local.pkg/generate-reference-docs/src/cli.ts",
+    "fix": "run-p *:fix",
+    "format:check": "oxfmt -c .prettierrc.mjs --check src/",
+    "format:fix": "oxfmt -c .prettierrc.mjs --write src/",
+    "lint:check": "oxlint -c oxlint.json src/",
+    "lint:fix": "oxlint -c oxlint.json --fix src/",
+    "test:check": "run-p test:unit test:integration",
+    "test:unit": "vitest run --config vitest.unit.config.ts",
+    "test:unit:watch": "vitest --config vitest.unit.config.ts",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:integration:watch": "vitest --config vitest.integration.config.ts",
+    "test:performance": "vitest bench --config vitest.bench.config.ts",
+    "type:check": "tsc --noEmit"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@ai.assistant/contracts": "workspace:*",
+    "@ai.assistant/tests": "workspace:*",
+    "@local.pkg/config": "workspace:*",
+    "@local.pkg/generate-reference-docs": "workspace:*",
+    "@types/node": "catalog:",
+    "npm-run-all": "catalog:",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plugin-dts": "catalog:",
+    "vitest": "catalog:"
+  }
+}

@@ -13,6 +13,8 @@ export default defineConfig({
       entry: {
         index: 'index.ts',
         'error/index': 'error/index.ts',
+        'events/index': 'events/index.ts',
+        'utilities/index': 'utilities/index.ts',
         'validation/index': 'validation/index.ts',
       },
     },

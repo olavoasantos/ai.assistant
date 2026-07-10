@@ -29,7 +29,7 @@ A getter that reads `.value` makes the property subscribable within `effect()` o
 
 ```typescript
 // ✅ Correct — getter hides the signal
-class PlayerRating {
+class Rating {
   readonly #rating = signal(0);
 
   get rating(): number {
@@ -38,7 +38,7 @@ class PlayerRating {
 }
 
 // ❌ Wrong — leaks the signal
-class PlayerRating {
+class Rating {
   readonly rating = signal(0);
 }
 ```

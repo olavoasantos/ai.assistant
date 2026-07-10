@@ -24,10 +24,20 @@
       "import": "./dist/error/index.js",
       "require": "./dist/error/index.cjs"
     },
+    "./events": {
+      "types": "./dist/events/index.d.ts",
+      "import": "./dist/events/index.js",
+      "require": "./dist/events/index.cjs"
+    },
     "./validation": {
       "types": "./dist/validation/index.d.ts",
       "import": "./dist/validation/index.js",
       "require": "./dist/validation/index.cjs"
+    },
+    "./utilities": {
+      "types": "./dist/utilities/index.d.ts",
+      "import": "./dist/utilities/index.js",
+      "require": "./dist/utilities/index.cjs"
     },
     "./register": "./dist/register.d.ts"
   },
@@ -38,10 +48,10 @@
     "dev": "vite build --watch",
     "docs:generate": "node --experimental-strip-types --experimental-transform-types --no-warnings node_modules/@local.pkg/generate-reference-docs/src/cli.ts",
     "fix": "run-p lint:fix format:fix",
-    "format:check": "oxfmt -c .prettierrc.mjs --check *.ts error/ utilities/ validation/",
-    "format:fix": "oxfmt -c .prettierrc.mjs --write *.ts error/ utilities/ validation/",
-    "lint:check": "oxlint -c oxlint.json *.ts error/ utilities/ validation/",
-    "lint:fix": "oxlint -c oxlint.json --fix *.ts error/ utilities/ validation/",
+    "format:check": "oxfmt -c .prettierrc.mjs --check *.ts error/ events/ utilities/ validation/",
+    "format:fix": "oxfmt -c .prettierrc.mjs --write *.ts error/ events/ utilities/ validation/",
+    "lint:check": "oxlint -c oxlint.json *.ts error/ events/ utilities/ validation/",
+    "lint:fix": "oxlint -c oxlint.json --fix *.ts error/ events/ utilities/ validation/",
     "test:check": "run-p test:unit",
     "test:unit": "vitest run --config vitest.unit.config.ts",
     "test:unit:watch": "vitest --config vitest.unit.config.ts",
