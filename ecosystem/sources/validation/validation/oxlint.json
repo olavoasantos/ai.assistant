@@ -1,0 +1,7 @@
+{
+  "$schema": "./node_modules/oxlint/configuration_schema.json",
+  "extends": ["./node_modules/@local.pkg/config/linting/oxlint.json"],
+  "rules": {
+    "typescript/consistent-return": 0
+  }
+}

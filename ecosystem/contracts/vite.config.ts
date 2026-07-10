@@ -13,6 +13,7 @@ export default defineConfig({
       entry: {
         index: 'index.ts',
         'error/index': 'error/index.ts',
+        'validation/index': 'validation/index.ts',
       },
     },
     rollupOptions: {

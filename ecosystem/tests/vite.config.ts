@@ -14,6 +14,7 @@ export default defineConfig({
         index: 'index.ts',
         'error/index': 'error/index.ts',
         'error/mocks': 'error/mocks.ts',
+        'validation/index': 'validation/index.ts',
       },
     },
     rollupOptions: {

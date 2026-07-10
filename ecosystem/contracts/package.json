@@ -24,6 +24,11 @@
       "import": "./dist/error/index.js",
       "require": "./dist/error/index.cjs"
     },
+    "./validation": {
+      "types": "./dist/validation/index.d.ts",
+      "import": "./dist/validation/index.js",
+      "require": "./dist/validation/index.cjs"
+    },
     "./register": "./dist/register.d.ts"
   },
   "scripts": {
@@ -33,10 +38,10 @@
     "dev": "vite build --watch",
     "docs:generate": "node --experimental-strip-types --experimental-transform-types --no-warnings node_modules/@local.pkg/generate-reference-docs/src/cli.ts",
     "fix": "run-p lint:fix format:fix",
-    "format:check": "oxfmt -c .prettierrc.mjs --check *.ts error/ utilities/",
-    "format:fix": "oxfmt -c .prettierrc.mjs --write *.ts error/ utilities/",
-    "lint:check": "oxlint -c oxlint.json *.ts error/ utilities/",
-    "lint:fix": "oxlint -c oxlint.json --fix *.ts error/ utilities/",
+    "format:check": "oxfmt -c .prettierrc.mjs --check *.ts error/ utilities/ validation/",
+    "format:fix": "oxfmt -c .prettierrc.mjs --write *.ts error/ utilities/ validation/",
+    "lint:check": "oxlint -c oxlint.json *.ts error/ utilities/ validation/",
+    "lint:fix": "oxlint -c oxlint.json --fix *.ts error/ utilities/ validation/",
     "test:check": "run-p test:unit",
     "test:unit": "vitest run --config vitest.unit.config.ts",
     "test:unit:watch": "vitest --config vitest.unit.config.ts",
@@ -45,7 +50,9 @@
     "test:performance": "vitest bench --config vitest.bench.config.ts",
     "type:check": "tsc --noEmit"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@standard-schema/spec": "catalog:"
+  },
   "devDependencies": {
     "@ai.assistant/contracts": "workspace:*",
     "@local.pkg/config": "workspace:*",

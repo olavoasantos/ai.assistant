@@ -6,6 +6,16 @@
   },
   "globals": {},
   "settings": {},
+  "options": {
+    "typeAware": true,
+    "typeCheck": true,
+    "maxWarnings": 0
+  },
+  "categories": {
+    "correctness": "error",
+    "suspicious": "warn",
+    "pedantic": "off"
+  },
   "ignorePatterns": ["**/node_modules/**", "**/build/**", "**/coverage/**"],
   "rules": {
     "eqeqeq": 0,
@@ -13,6 +23,13 @@
     "ban-types": 0,
     "ban-ts-comment": 0,
     "no-namespace": 0,
+    "no-this-alias": 0,
+    "no-underscore-dangle": 0,
+    "require-module-specifiers": 0,
+    "typescript/no-unsafe-type-assertion": 0,
+    "typescript/no-unnecessary-type-assertion": 0,
+    "typescript/no-unnecessary-type-parameters": 0,
+    "typescript/no-unnecessary-type-arguments": 0,
     "no-unused-vars": [
       2,
       {

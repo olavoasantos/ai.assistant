@@ -6,6 +6,9 @@ settings:
 
 catalogs:
   default:
+    '@standard-schema/spec':
+      specifier: ^1.1.0
+      version: 1.1.0
     '@types/node':
       specifier: ^25.5.0
       version: 25.6.0
@@ -70,6 +73,10 @@ importers:
         version: 6.0.2
 
   ecosystem/contracts:
+    dependencies:
+      '@standard-schema/spec':
+        specifier: 'catalog:'
+        version: 1.1.0
     devDependencies:
       '@ai.assistant/contracts':
         specifier: workspace:*
@@ -106,6 +113,52 @@ importers:
         version: 4.1.4(@types/node@25.6.0)(@vitest/coverage-v8@4.1.4)(vite@8.0.8(@types/node@25.6.0)(terser@5.46.1)(yaml@2.8.3))
 
   ecosystem/sources/error/error:
+    devDependencies:
+      '@ai.assistant/contracts':
+        specifier: workspace:*
+        version: link:../../../contracts
+      '@ai.assistant/tests':
+        specifier: workspace:*
+        version: link:../../../tests
+      '@local.pkg/config':
+        specifier: workspace:*
+        version: link:../../../../internal/config
+      '@local.pkg/generate-reference-docs':
+        specifier: workspace:*
+        version: link:../../../../internal/generate-reference-docs
+      '@types/node':
+        specifier: 'catalog:'
+        version: 25.6.0
+      npm-run-all:
+        specifier: 'catalog:'
+        version: 4.1.5
+      oxfmt:
+        specifier: 'catalog:'
+        version: 0.44.0
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.59.0
+      typescript:
+        specifier: 'catalog:'
+        version: 6.0.2
+      vite:
+        specifier: 'catalog:'
+        version: 8.0.8(@types/node@25.6.0)(terser@5.46.1)(yaml@2.8.3)
+      vite-plugin-dts:
+        specifier: 'catalog:'
+        version: 4.5.4(@types/node@25.6.0)(typescript@6.0.2)(vite@8.0.8(@types/node@25.6.0)(terser@5.46.1)(yaml@2.8.3))
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.4(@types/node@25.6.0)(@vitest/coverage-v8@4.1.4)(vite@8.0.8(@types/node@25.6.0)(terser@5.46.1)(yaml@2.8.3))
+
+  ecosystem/sources/validation/validation:
+    dependencies:
+      '@ai.assistant/error':
+        specifier: workspace:*
+        version: link:../../error/error
+      '@standard-schema/spec':
+        specifier: 'catalog:'
+        version: 1.1.0
     devDependencies:
       '@ai.assistant/contracts':
         specifier: workspace:*

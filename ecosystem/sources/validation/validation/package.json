@@ -1,0 +1,126 @@
+{
+  "name": "@ai.assistant/validation",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "author": "Olavo Amorim Santos<olavo.santos@micra.dev>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/olavoasantos/ai.assistant.git",
+    "directory": "ecosystem/sources/validation/validation"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./custom/rule": {
+      "types": "./dist/custom/rule/index.d.ts",
+      "import": "./dist/custom/rule/index.js",
+      "require": "./dist/custom/rule/index.cjs"
+    },
+    "./string": {
+      "types": "./dist/string/index.d.ts",
+      "import": "./dist/string/index.js",
+      "require": "./dist/string/index.cjs"
+    },
+    "./string/rules/email": {
+      "types": "./dist/string/rules/email.d.ts",
+      "import": "./dist/string/rules/email.js",
+      "require": "./dist/string/rules/email.cjs"
+    },
+    "./string/rules/minLength": {
+      "types": "./dist/string/rules/minLength.d.ts",
+      "import": "./dist/string/rules/minLength.js",
+      "require": "./dist/string/rules/minLength.cjs"
+    },
+    "./string/rules/maxLength": {
+      "types": "./dist/string/rules/maxLength.d.ts",
+      "import": "./dist/string/rules/maxLength.js",
+      "require": "./dist/string/rules/maxLength.cjs"
+    },
+    "./string/rules/trim": {
+      "types": "./dist/string/rules/trim.d.ts",
+      "import": "./dist/string/rules/trim.js",
+      "require": "./dist/string/rules/trim.cjs"
+    },
+    "./number": {
+      "types": "./dist/number/index.d.ts",
+      "import": "./dist/number/index.js",
+      "require": "./dist/number/index.cjs"
+    },
+    "./number/rules/min": {
+      "types": "./dist/number/rules/min.d.ts",
+      "import": "./dist/number/rules/min.js",
+      "require": "./dist/number/rules/min.cjs"
+    },
+    "./number/rules/max": {
+      "types": "./dist/number/rules/max.d.ts",
+      "import": "./dist/number/rules/max.js",
+      "require": "./dist/number/rules/max.cjs"
+    },
+    "./boolean": {
+      "types": "./dist/boolean/index.d.ts",
+      "import": "./dist/boolean/index.js",
+      "require": "./dist/boolean/index.cjs"
+    },
+    "./object": {
+      "types": "./dist/object/index.d.ts",
+      "import": "./dist/object/index.js",
+      "require": "./dist/object/index.cjs"
+    },
+    "./array": {
+      "types": "./dist/array/index.d.ts",
+      "import": "./dist/array/index.js",
+      "require": "./dist/array/index.cjs"
+    },
+    "./infer": {
+      "types": "./dist/infer/index.d.ts",
+      "import": "./dist/infer/index.js",
+      "require": "./dist/infer/index.cjs"
+    },
+    "./register": "./dist/register.d.ts"
+  },
+  "scripts": {
+    "build": "vite build && cp src/register.d.ts dist/register.d.ts",
+    "check": "run-p type:check lint:check format:check test:check",
+    "clean": "rm -rf dist node_modules .testing",
+    "dev": "vite build --watch",
+    "docs:generate": "node --experimental-strip-types --experimental-transform-types --no-warnings node_modules/@local.pkg/generate-reference-docs/src/cli.ts",
+    "fix": "run-p *:fix",
+    "format:check": "oxfmt -c .prettierrc.mjs --check src/",
+    "format:fix": "oxfmt -c .prettierrc.mjs --write src/",
+    "lint:check": "oxlint -c oxlint.json src/",
+    "lint:fix": "oxlint -c oxlint.json --fix src/",
+    "test:check": "run-p test:unit test:integration",
+    "test:unit": "vitest run --config vitest.unit.config.ts",
+    "test:unit:watch": "vitest --config vitest.unit.config.ts",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:integration:watch": "vitest --config vitest.integration.config.ts",
+    "test:performance": "vitest bench --config vitest.bench.config.ts",
+    "type:check": "tsc --noEmit"
+  },
+  "dependencies": {
+    "@ai.assistant/error": "workspace:*",
+    "@standard-schema/spec": "catalog:"
+  },
+  "devDependencies": {
+    "@ai.assistant/contracts": "workspace:*",
+    "@ai.assistant/tests": "workspace:*",
+    "@local.pkg/config": "workspace:*",
+    "@local.pkg/generate-reference-docs": "workspace:*",
+    "@types/node": "catalog:",
+    "npm-run-all": "catalog:",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plugin-dts": "catalog:",
+    "vitest": "catalog:"
+  }
+}
