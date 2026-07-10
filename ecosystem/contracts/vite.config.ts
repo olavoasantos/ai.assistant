@@ -15,6 +15,7 @@ export default defineConfig({
         'error/index': 'error/index.ts',
         'events/index': 'events/index.ts',
         'renderable/index': 'renderable/index.ts',
+        'service-container/index': 'service-container/index.ts',
         'signals/index': 'signals/index.ts',
         'telemetry/index': 'telemetry/index.ts',
         'utilities/index': 'utilities/index.ts',

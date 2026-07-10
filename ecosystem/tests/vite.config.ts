@@ -16,6 +16,7 @@ export default defineConfig({
         'error/mocks': 'error/mocks.ts',
         'events/index': 'events/index.ts',
         'helpers/index': 'helpers/index.ts',
+        'service-container/index': 'service-container/index.ts',
         'telemetry/index': 'telemetry/index.ts',
         'validation/index': 'validation/index.ts',
       },
