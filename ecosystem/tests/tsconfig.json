@@ -1,0 +1,9 @@
+{
+  "extends": "@local.pkg/config/typescript/base.json",
+  "compilerOptions": {
+    "rootDir": ".",
+    "outDir": "dist"
+  },
+  "include": ["*.ts", "**/*.ts", "register.d.ts"],
+  "exclude": ["dist", "node_modules"]
+}

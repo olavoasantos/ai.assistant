@@ -1,0 +1,62 @@
+{
+  "name": "@ai.assistant/contracts",
+  "version": "0.0.0",
+  "private": true,
+  "license": "MIT",
+  "author": "Olavo Amorim Santos<olavo.santos@micra.dev>",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/olavoasantos/ai.assistant.git",
+    "directory": "ecosystem/contracts"
+  },
+  "files": [
+    "dist"
+  ],
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js",
+      "require": "./dist/index.cjs"
+    },
+    "./error": {
+      "types": "./dist/error/index.d.ts",
+      "import": "./dist/error/index.js",
+      "require": "./dist/error/index.cjs"
+    },
+    "./register": "./dist/register.d.ts"
+  },
+  "scripts": {
+    "build": "vite build && cp register.d.ts dist/register.d.ts",
+    "check": "run-p type:check lint:check format:check test:check",
+    "clean": "rm -rf dist node_modules .testing",
+    "dev": "vite build --watch",
+    "docs:generate": "node --experimental-strip-types --experimental-transform-types --no-warnings node_modules/@local.pkg/generate-reference-docs/src/cli.ts",
+    "fix": "run-p lint:fix format:fix",
+    "format:check": "oxfmt -c .prettierrc.mjs --check *.ts error/ utilities/",
+    "format:fix": "oxfmt -c .prettierrc.mjs --write *.ts error/ utilities/",
+    "lint:check": "oxlint -c oxlint.json *.ts error/ utilities/",
+    "lint:fix": "oxlint -c oxlint.json --fix *.ts error/ utilities/",
+    "test:check": "run-p test:unit",
+    "test:unit": "vitest run --config vitest.unit.config.ts",
+    "test:unit:watch": "vitest --config vitest.unit.config.ts",
+    "test:integration": "vitest run --config vitest.integration.config.ts",
+    "test:integration:watch": "vitest --config vitest.integration.config.ts",
+    "test:performance": "vitest bench --config vitest.bench.config.ts",
+    "type:check": "tsc --noEmit"
+  },
+  "dependencies": {},
+  "devDependencies": {
+    "@ai.assistant/contracts": "workspace:*",
+    "@local.pkg/config": "workspace:*",
+    "@local.pkg/generate-reference-docs": "workspace:*",
+    "@types/node": "catalog:",
+    "npm-run-all": "catalog:",
+    "oxfmt": "catalog:",
+    "oxlint": "catalog:",
+    "typescript": "catalog:",
+    "vite": "catalog:",
+    "vite-plugin-dts": "catalog:",
+    "vitest": "catalog:"
+  }
+}
