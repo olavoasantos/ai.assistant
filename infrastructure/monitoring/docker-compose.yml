@@ -1,0 +1,36 @@
+services:
+  aiassistant-prometheus:
+    container_name: aiassistant-prometheus
+    image: prom/prometheus:latest
+    volumes:
+      - ./infrastructure/monitoring/prometheus:/prometheus
+      - ./infrastructure/monitoring/src/prometheus.yml:/etc/prometheus/prometheus.yml
+    command:
+      - '--config.file=/etc/prometheus/prometheus.yml'
+    networks:
+      - aiassistant-monitoring
+    ports:
+      - '9090:9090'
+
+  aiassistant-monitoring:
+    container_name: aiassistant-monitoring
+    image: grafana/grafana:latest
+    volumes:
+      - ./infrastructure/monitoring/grafana:/var/lib/grafana
+      - ./infrastructure/monitoring/src/provisioning:/etc/grafana/provisioning
+      - ./infrastructure/monitoring/src/config.ini:/etc/grafana/config.ini
+      - ./infrastructure/monitoring/src/dashboards:/var/lib/grafana/dashboards
+    environment:
+      - GF_SECURITY_ADMIN_PASSWORD=winnipeg123
+      - GF_SECURITY_ADMIN_USER=admin
+      - GF_SERVER_ROOT_URL=https://monitoring.aiassistant.test
+    depends_on:
+      - aiassistant-prometheus
+    networks:
+      - aiassistant-monitoring
+    ports:
+      - '3000:3000'
+
+networks:
+  aiassistant-monitoring:
+    driver: bridge

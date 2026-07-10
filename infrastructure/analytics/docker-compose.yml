@@ -1,0 +1,48 @@
+services:
+  aiassistant-analytics:
+    container_name: aiassistant-analytics
+    image: ghcr.io/umami-software/umami:postgresql-latest
+    ports:
+      - '3001:3001'
+    environment:
+      PORT: 3001
+      DATABASE_URL: postgresql://admin:winnipeg123@aiassistant-analytics-database:5432/analytics
+      DATABASE_TYPE: postgresql
+      APP_SECRET: eyrevqmbdz8orgzo5ozihipidl7zunttropntgppgyvbcbvs0
+      UMAMI_PASSWORD: winnipeg123
+    depends_on:
+      aiassistant-analytics-database:
+        condition: service_healthy
+    restart: always
+    networks:
+      - aiassistant-analytics
+    healthcheck:
+      test: ['CMD-SHELL', 'curl http://aiassistant-analytics/api/heartbeat']
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  aiassistant-analytics-database:
+    container_name: 'aiassistant-analytics-database'
+    image: postgres
+    environment:
+      POSTGRES_DB: analytics
+      POSTGRES_PASSWORD: winnipeg123
+      POSTGRES_USER: admin
+    ports:
+      - 5432
+    volumes:
+      - ./infrastructure/analytics/data:/var/lib/postgresql/data/
+    restart: unless-stopped
+    networks:
+      - aiassistant-analytics
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB} -t 1']
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 10s
+
+networks:
+  aiassistant-analytics:
+    driver: bridge

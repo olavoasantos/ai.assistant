@@ -1,0 +1,91 @@
+x-logger-environment: &logger-environment
+  CELERY_WORKER_AUTOSCALE: '1,3'
+  CELERY_WORKER_MAX_TASKS_PER_CHILD: '10000'
+  CSRF_TRUSTED_ORIGINS: https://logger.aiassistant.test
+  DATABASE_URL: postgresql://admin:winnipeg123@aiassistant-logger-database:5432/logger
+  DEFAULT_FROM_EMAIL: no-reply@aiassistant.test
+  EMAIL_URL: smtp://user:winnipeg123@host.docker.internal:1025
+  ENABLE_OPEN_USER_REGISTRATION: 'True'
+  ENABLE_ORGANIZATION_CREATION: 'True'
+  GLITCHTIP_DOMAIN: https://logger.aiassistant.test
+  PORT: 8000
+  REDIS_URL: redis://aiassistant-logger-cache:6379/0
+  SECRET_KEY: fa33e45741c14d5afec45cf380c9f5bd59607478bed79ffbdb57b689a78e23c7
+
+x-depends-on: &depends-on
+  aiassistant-logger-database:
+    condition: service_healthy
+  aiassistant-logger-cache:
+    condition: service_healthy
+
+services:
+  aiassistant-logger-database:
+    container_name: 'aiassistant-logger-database'
+    image: postgres
+    environment:
+      POSTGRES_DB: logger
+      POSTGRES_PASSWORD: winnipeg123
+      POSTGRES_USER: admin
+    ports:
+      - 5432
+    volumes:
+      - ./infrastructure/logger/data:/var/lib/postgresql/data/
+    restart: unless-stopped
+    networks:
+      - aiassistant-logger
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB} -t 1']
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 10s
+
+  aiassistant-logger-cache:
+    container_name: 'aiassistant-logger-cache'
+    image: redis
+    restart: unless-stopped
+    healthcheck:
+      test: ['CMD', 'redis-cli', 'ping']
+      interval: 5s
+      timeout: 30s
+      retries: 50
+    networks:
+      - aiassistant-logger
+
+  aiassistant-logger:
+    container_name: aiassistant-logger
+    image: glitchtip/glitchtip
+    depends_on: *depends-on
+    ports:
+      - '8000:8000'
+    environment: *logger-environment
+    restart: unless-stopped
+    networks:
+      - aiassistant-logger
+    volumes:
+      - ./infrastructure/logger/upload:/code/uploads
+
+  aiassistant-logger-worker:
+    container_name: aiassistant-logger-worker
+    image: glitchtip/glitchtip
+    command: ./bin/run-celery-with-beat.sh
+    depends_on: *depends-on
+    environment: *logger-environment
+    restart: unless-stopped
+    networks:
+      - aiassistant-logger
+    volumes:
+      - ./infrastructure/logger/upload:/code/uploads
+
+  aiassistant-logger-migrate:
+    container_name: aiassistant-logger-migrate
+    image: glitchtip/glitchtip
+    depends_on: *depends-on
+    command: './manage.py migrate'
+    environment: *logger-environment
+    networks:
+      - aiassistant-logger
+
+networks:
+  aiassistant-logger:
+    driver: bridge

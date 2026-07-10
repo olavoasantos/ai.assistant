@@ -1,0 +1,41 @@
+services:
+  aiassistant-database:
+    container_name: aiassistant-database
+    image: postgres
+    environment:
+      - POSTGRES_USER=admin
+      - POSTGRES_PASSWORD=winnipeg123
+      - POSTGRES_DB=aiassistant
+    ports:
+      - 5432:5432
+    volumes:
+      - ./infrastructure/database/data:/var/lib/postgresql/data/
+    restart: unless-stopped
+    networks:
+      - aiassistant
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB} -t 1']
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 10s
+
+  aiassistant-database-gui:
+    container_name: aiassistant-database-gui
+    image: dpage/pgadmin4
+    environment:
+      - PGADMIN_DEFAULT_EMAIL=admin@aiassistant.test
+      - PGADMIN_DEFAULT_PASSWORD=winnipeg123
+      - PGADMIN_CONFIG_ALLOW_SPECIAL_EMAIL_DOMAINS=['test']
+    ports:
+      - '5050:80'
+    depends_on:
+      aiassistant-database:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - aiassistant
+
+networks:
+  aiassistant:
+    driver: bridge

@@ -1,0 +1,11 @@
+-f docker-compose.yml
+-f infrastructure/database/docker-compose.yml
+-f infrastructure/cache/docker-compose.yml
+-f infrastructure/logger/docker-compose.yml
+-f infrastructure/mail/docker-compose.yml
+-f infrastructure/monitoring/docker-compose.yml
+-f infrastructure/storage/docker-compose.yml
+-f infrastructure/analytics/docker-compose.yml
+-f infrastructure/search/docker-compose.yml
+-f infrastructure/auth/docker-compose.yml
+-f infrastructure/flags/docker-compose.yml

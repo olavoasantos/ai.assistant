@@ -1,0 +1,24 @@
+services:
+  aiassistant-search:
+    container_name: aiassistant-search
+    image: getmeili/meilisearch:latest
+    ports:
+      - 7700:7700
+    environment:
+      - MEILI_MASTER_KEY=winnipeg123
+      - MEILI_ENV=development
+    volumes:
+      - ./infrastructure/search/data:/meili_data
+    restart: unless-stopped
+    networks:
+      - aiassistant-search
+    healthcheck:
+      test: ['CMD', 'curl', '-f', 'http://localhost:7700/health']
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 10s
+
+networks:
+  aiassistant-search:
+    driver: bridge

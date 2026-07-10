@@ -1,0 +1,14 @@
+services:
+  aiassistant-mail:
+    container_name: 'aiassistant-mail'
+    image: mailhog/mailhog
+    restart: always
+    ports:
+      - '1025:1025'
+      - '8025:8025'
+    networks:
+      - aiassistant-mail
+
+networks:
+  aiassistant-mail:
+    driver: bridge

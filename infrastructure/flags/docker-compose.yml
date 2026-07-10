@@ -1,0 +1,48 @@
+services:
+  aiassistant-flags:
+    container_name: aiassistant-flags
+    image: unleashorg/unleash-server
+    environment:
+      - DATABASE_URL=postgresql://admin:winnipeg123@aiassistant-flags-database:5432/flags
+      - DATABASE_SSL=false
+      - UNLEASH_DEFAULT_ADMIN_USERNAME=admin
+      - UNLEASH_DEFAULT_ADMIN_PASSWORD=winnipeg123
+    ports:
+      - '4242:4242'
+    depends_on:
+      aiassistant-flags-database:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - aiassistant-flags
+    healthcheck:
+      test: ['CMD-SHELL', 'wget -qO- http://localhost:4242/health || exit 1']
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+  aiassistant-flags-database:
+    container_name: aiassistant-flags-database
+    image: postgres
+    environment:
+      POSTGRES_DB: flags
+      POSTGRES_USER: admin
+      POSTGRES_PASSWORD: winnipeg123
+    ports:
+      - 5432
+    volumes:
+      - ./infrastructure/flags/data:/var/lib/postgresql/data/
+    restart: unless-stopped
+    networks:
+      - aiassistant-flags
+    healthcheck:
+      test: ['CMD-SHELL', 'pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB} -t 1']
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 10s
+
+networks:
+  aiassistant-flags:
+    driver: bridge

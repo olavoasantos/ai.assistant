@@ -1,0 +1,17 @@
+name: aiassistant
+
+services:
+  aiassistant-nginx:
+    container_name: 'aiassistant-nginx'
+    build:
+      context: '.'
+    ports:
+      - '80:80'
+      - '443:443'
+      - '5111:5111'
+    networks:
+      - aiassistant
+
+networks:
+  aiassistant:
+    driver: bridge

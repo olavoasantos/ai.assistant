@@ -1,0 +1,34 @@
+services:
+  aiassistant-cache:
+    container_name: aiassistant-cache
+    image: redis
+    command: redis-server --requirepass winnipeg123
+    ports:
+      - 6379:6379
+    volumes:
+      - ./infrastructure/cache/data:/data
+    restart: unless-stopped
+    networks:
+      - aiassistant-cache
+    healthcheck:
+      test: ['CMD', 'redis-cli', '-a', 'winnipeg123', 'ping']
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 10s
+
+  aiassistant-cache-gui:
+    container_name: aiassistant-cache-gui
+    image: redislabs/redisinsight
+    ports:
+      - '5540:5540'
+    depends_on:
+      aiassistant-cache:
+        condition: service_healthy
+    restart: unless-stopped
+    networks:
+      - aiassistant-cache
+
+networks:
+  aiassistant-cache:
+    driver: bridge

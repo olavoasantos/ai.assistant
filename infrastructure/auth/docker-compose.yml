@@ -1,0 +1,30 @@
+services:
+  aiassistant-auth:
+    container_name: aiassistant-auth
+    image: quay.io/keycloak/keycloak
+    command: start-dev
+    environment:
+      - KC_HOSTNAME=https://auth.aiassistant.test
+      - KC_HTTP_ENABLED=true
+      - KC_HEALTH_ENABLED=true
+      - KC_BOOTSTRAP_ADMIN_USERNAME=admin
+      - KC_BOOTSTRAP_ADMIN_PASSWORD=winnipeg123
+    ports:
+      - '8080:8080'
+    restart: unless-stopped
+    networks:
+      - aiassistant-auth
+    healthcheck:
+      test:
+        [
+          'CMD-SHELL',
+          "exec 3<>/dev/tcp/localhost/9000 && echo -e 'GET /health/ready HTTP/1.1\r\nHost: localhost\r\nConnection: close\r\n\r\n' >&3 && cat <&3 | grep -q '\"status\":\"UP\"'",
+        ]
+      interval: 10s
+      timeout: 10s
+      retries: 10
+      start_period: 30s
+
+networks:
+  aiassistant-auth:
+    driver: bridge
