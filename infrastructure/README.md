@@ -84,27 +84,39 @@ The generated certificate is used by the local Nginx reverse proxy for `aiassist
 
 ## Service Catalog
 
-| Service         | Tool          | Local URL / port                                          | Notes                                                          |
-| --------------- | ------------- | --------------------------------------------------------- | -------------------------------------------------------------- |
-| Reverse proxy   | Nginx         | `https://*.aiassistant.test`, ports `80`/`443`            | Routes browser-facing tools through local TLS.                 |
-| Database        | PostgreSQL    | `localhost:5432`                                          | Main local relational database.                                |
-| Database UI     | pgAdmin       | `https://database.aiassistant.test`, port `5050`          | Default login: `admin@aiassistant.test` / `winnipeg123`.       |
-| Cache           | Redis         | `localhost:6379`                                          | Default password: `winnipeg123`.                               |
-| Cache UI        | RedisInsight  | `https://cache.aiassistant.test`, port `5540`             | Browser UI for Redis.                                          |
-| Mail            | MailHog       | SMTP `localhost:1025`, UI `https://mail.aiassistant.test` | Captures local email instead of sending it.                    |
-| Monitoring      | Grafana       | `https://monitoring.aiassistant.test`, port `3000`        | Default login: `admin` / `winnipeg123`.                        |
-| Metrics         | Prometheus    | `https://prometheus.aiassistant.test`, port `9090`        | Uses `infrastructure/monitoring/src/prometheus.yml`.           |
-| Storage         | MinIO API     | `https://storage.aiassistant.test`, port `9000`           | Default root user: `admin` / `winnipeg123`.                    |
-| Storage console | MinIO console | `https://filesystem.aiassistant.test`, port `9001`        | Initializes an `app-files` bucket.                             |
-| Analytics       | Umami         | `https://analytics.aiassistant.test`, port `3001`         | Backed by a local PostgreSQL service.                          |
-| Search          | Meilisearch   | `https://search.aiassistant.test`, port `7700`            | Default master key: `winnipeg123`.                             |
-| Auth            | Keycloak      | `https://auth.aiassistant.test`, port `8080`              | Default admin: `admin` / `winnipeg123`.                        |
-| Feature flags   | Unleash       | `https://flags.aiassistant.test`, port `4242`             | Backed by a local PostgreSQL service.                          |
-| Logging         | GlitchTip     | `https://logger.aiassistant.test`, port `8000`            | Error reporting and event logging; email goes through MailHog. |
+| Service         | Tool          | Local URL / port                                          | Notes                                                                                         |
+| --------------- | ------------- | --------------------------------------------------------- | --------------------------------------------------------------------------------------------- |
+| Reverse proxy   | Nginx         | `https://*.aiassistant.test`, ports `80`/`443`            | Routes browser-facing tools through local TLS.                                                |
+| Database        | PostgreSQL    | `localhost:5432`                                          | Main local relational database.                                                               |
+| Database UI     | pgAdmin       | `https://database.aiassistant.test`, port `5050`          | Default login: `admin@aiassistant.test` / `winnipeg123`.                                      |
+| Cache           | Redis         | `localhost:6379`                                          | Default password: `winnipeg123`.                                                              |
+| Cache UI        | RedisInsight  | `https://cache.aiassistant.test`, port `5540`             | Browser UI for Redis.                                                                         |
+| Mail            | MailHog       | SMTP `localhost:1025`, UI `https://mail.aiassistant.test` | Captures local email instead of sending it.                                                   |
+| Monitoring      | Grafana       | `https://monitoring.aiassistant.test`, port `3000`        | Default login: `admin` / `winnipeg123`.                                                       |
+| Metrics         | Prometheus    | `https://prometheus.aiassistant.test`, port `9090`        | Uses `infrastructure/monitoring/src/prometheus.yml`.                                          |
+| Storage         | MinIO API     | `https://storage.aiassistant.test`, port `9000`           | Default root user: `admin` / `winnipeg123`.                                                   |
+| Storage console | MinIO console | `https://filesystem.aiassistant.test`, port `9001`        | Initializes an `app-files` bucket.                                                            |
+| Analytics       | Umami         | `https://analytics.aiassistant.test`, port `3001`         | Default login: `admin` / `winnipeg123`; backed by PostgreSQL.                                 |
+| Search          | Meilisearch   | `https://search.aiassistant.test`, port `7700`            | Default master key: `winnipeg123`; derived API keys live in `.env.infra`.                     |
+| Auth            | Keycloak      | `https://auth.aiassistant.test`, port `8080`              | Default admin: `admin` / `winnipeg123`; local Google simulation uses the `aiassistant` realm. |
+| Feature flags   | Unleash       | `https://flags.aiassistant.test`, port `4242`             | Default login: `admin` / `winnipeg123`; local SDK tokens live in `.env.infra`.                |
+| Logging         | GlitchTip     | `https://logger.aiassistant.test`, port `8000`            | Error reporting and event logging; DSN lives in `.env.infra`; email goes through MailHog.     |
+
+## Local Environment
+
+`.env.infra` contains local application-facing connection details for the services above. It is local development configuration and can include generated IDs, DSNs, and API tokens from persisted service data, such as:
+
+- `ANALYTICS_WEBSITE_ID` from Umami.
+- `AUTH_GOOGLE_ISSUER`, `AUTH_GOOGLE_CLIENT_ID`, and `AUTH_GOOGLE_CLIENT_SECRET` for the local Keycloak Google-provider simulation.
+- `FLAGS_BACKEND_TOKEN` and `FLAGS_FRONTEND_TOKEN` from Unleash.
+- `SEARCH_ADMIN_KEY` and `SEARCH_SEARCH_KEY` from Meilisearch.
+- `LOGGER_DSN` and `LOGGER_SECURITY_ENDPOINT` from GlitchTip.
+
+If you reset a service's persistent data directory, regenerate any corresponding values in `.env.infra`.
 
 ## Local Credentials
 
-Credentials in Compose files are local development defaults only. Do not reuse them in deployed environments and do not add production secrets to this folder.
+Credentials in Compose files and `.env.infra` are local development defaults only. Do not reuse them in deployed environments and do not add production secrets to this folder.
 
 ## Persistent Data
 

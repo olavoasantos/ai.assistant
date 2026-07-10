@@ -1,6 +1,6 @@
 ---
 name: work-on-ecosystem-entity
-description: Work on an ecosystem entity organized by helix strands: charter, contracts, tests, and sources. Use when adding or changing ecosystem contracts, shared compliance tests, source implementations, or entity charters.
+description: Work on an ecosystem entity organized by helix strands "charter, contracts, tests, and sources". Use when adding or changing ecosystem contracts, shared compliance tests, source implementations, or entity charters.
 ---
 
 # Work on Ecosystem Entity
