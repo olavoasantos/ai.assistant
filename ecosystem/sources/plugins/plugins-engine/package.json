@@ -1,5 +1,5 @@
 {
-  "name": "@ai.assistant/{{PACKAGE_NAME}}",
+  "name": "@ai.assistant/plugins-engine",
   "version": "0.0.0",
   "private": true,
   "license": "MIT",
@@ -7,8 +7,11 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/olavoasantos/ai.assistant.git",
-    "directory": "ecosystem/sources/{{ENTITY}}/{{PACKAGE_NAME}}"
+    "directory": "ecosystem/sources/plugins/plugins-engine"
   },
+  "files": [
+    "dist"
+  ],
   "type": "module",
   "exports": {
     ".": {
@@ -18,7 +21,6 @@
     },
     "./register": "./dist/register.d.ts"
   },
-  "files": ["dist"],
   "scripts": {
     "build": "vite build && cp src/register.d.ts dist/register.d.ts",
     "check": "run-p type:check lint:check format:check test:check",
@@ -30,7 +32,7 @@
     "format:fix": "oxfmt -c .prettierrc.mjs --write src/",
     "lint:check": "oxlint -c oxlint.json src/",
     "lint:fix": "oxlint -c oxlint.json --fix src/",
-    "test:check": "run-p test:unit",
+    "test:check": "run-p test:unit test:integration",
     "test:unit": "vitest run --config vitest.unit.config.ts",
     "test:unit:watch": "vitest --config vitest.unit.config.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
@@ -38,9 +40,16 @@
     "test:performance": "vitest bench --config vitest.bench.config.ts",
     "type:check": "tsc --noEmit"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@ai.assistant/error": "workspace:*",
+    "@ai.assistant/event-emitter": "workspace:*",
+    "@ai.assistant/helpers": "workspace:*",
+    "@ai.assistant/telemetry": "workspace:*",
+    "@ai.assistant/validation": "workspace:*"
+  },
   "devDependencies": {
     "@ai.assistant/contracts": "workspace:*",
+    "@ai.assistant/tests": "workspace:*",
     "@local.pkg/config": "workspace:*",
     "@local.pkg/generate-reference-docs": "workspace:*",
     "@types/node": "catalog:",
