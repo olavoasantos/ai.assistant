@@ -6,6 +6,9 @@ settings:
 
 catalogs:
   default:
+    '@preact/signals-core':
+      specifier: ^1.8.0
+      version: 1.14.4
     '@standard-schema/spec':
       specifier: ^1.1.0
       version: 1.1.0
@@ -30,6 +33,9 @@ catalogs:
     oxlint-tsgolint:
       specifier: ^0.24.0
       version: 0.24.0
+    preact:
+      specifier: ^10.29.3
+      version: 10.29.7
     terser:
       specifier: ^5.49.0
       version: 5.49.0
@@ -86,9 +92,15 @@ importers:
 
   ecosystem/contracts:
     dependencies:
+      '@preact/signals-core':
+        specifier: 'catalog:'
+        version: 1.14.4
       '@standard-schema/spec':
         specifier: 'catalog:'
         version: 1.1.0
+      preact:
+        specifier: 'catalog:'
+        version: 10.29.7
     devDependencies:
       '@ai.assistant/contracts':
         specifier: workspace:*
@@ -213,6 +225,61 @@ importers:
         version: 4.1.10(@types/node@26.1.1)(@vitest/coverage-v8@4.1.10)(vite@8.1.4(@types/node@26.1.1)(terser@5.49.0)(yaml@2.9.0))
 
   ecosystem/sources/helpers/helpers:
+    devDependencies:
+      '@ai.assistant/contracts':
+        specifier: workspace:*
+        version: link:../../../contracts
+      '@ai.assistant/tests':
+        specifier: workspace:*
+        version: link:../../../tests
+      '@local.pkg/config':
+        specifier: workspace:*
+        version: link:../../../../internal/config
+      '@local.pkg/generate-reference-docs':
+        specifier: workspace:*
+        version: link:../../../../internal/generate-reference-docs
+      '@types/node':
+        specifier: 'catalog:'
+        version: 26.1.1
+      npm-run-all:
+        specifier: 'catalog:'
+        version: 4.1.5
+      oxfmt:
+        specifier: 'catalog:'
+        version: 0.58.0
+      oxlint:
+        specifier: 'catalog:'
+        version: 1.73.0(oxlint-tsgolint@0.24.0)
+      typescript:
+        specifier: 'catalog:'
+        version: 7.0.2
+      vite:
+        specifier: 'catalog:'
+        version: 8.1.4(@types/node@26.1.1)(terser@5.49.0)(yaml@2.9.0)
+      vite-plugin-dts:
+        specifier: 'catalog:'
+        version: 5.0.3(@microsoft/api-extractor@7.58.2(@types/node@26.1.1))(rolldown@1.1.5)(typescript@7.0.2)(vite@8.1.4(@types/node@26.1.1)(terser@5.49.0)(yaml@2.9.0))
+      vitest:
+        specifier: 'catalog:'
+        version: 4.1.10(@types/node@26.1.1)(@vitest/coverage-v8@4.1.10)(vite@8.1.4(@types/node@26.1.1)(terser@5.49.0)(yaml@2.9.0))
+
+  ecosystem/sources/telemetry/telemetry:
+    dependencies:
+      '@ai.assistant/error':
+        specifier: workspace:*
+        version: link:../../error/error
+      '@ai.assistant/event-emitter':
+        specifier: workspace:*
+        version: link:../../events/event-emitter
+      '@ai.assistant/helpers':
+        specifier: workspace:*
+        version: link:../../helpers/helpers
+      '@ai.assistant/validation':
+        specifier: workspace:*
+        version: link:../../validation/validation
+      '@preact/signals-core':
+        specifier: 'catalog:'
+        version: 1.14.4
     devDependencies:
       '@ai.assistant/contracts':
         specifier: workspace:*
@@ -968,6 +1035,9 @@ packages:
     engines: {node: ^20.19.0 || >=22.12.0}
     cpu: [x64]
     os: [win32]
+
+  '@preact/signals-core@1.14.4':
+    resolution: {integrity: sha512-HNB6HYeYKhQbJ1aKl+YRjrS4+QWHLKX6qKoUsfS/m0vqzsVaEBiZiaKbG/e+NKk2ch5ALQr/ihWaMHxiCuuWHA==}
 
   '@rolldown/binding-android-arm64@1.1.5':
     resolution: {integrity: sha512-lZg8fqIv2v7FF237bwMgzGZEJvGL79/s5knJ/i6FmsGF4XXlzccZ4jb+TrFIxtSSxFtIpdsgrPZeMk1I9AFcyQ==}
@@ -2242,6 +2312,14 @@ packages:
     resolution: {integrity: sha512-vuwillviilfKZsg0VGj5R/YwwcHx4SLsIOI/7K6mQkWx+l5cUHTjj5g0AasTBcyXsbfTgrwsUNmVUb5xVwyPwg==}
     engines: {node: ^10 || ^12 || >=14}
 
+  preact@10.29.7:
+    resolution: {integrity: sha512-DCHYrK/B10yUD3ZjLfhZ3WIE/9Vf9VFUODcRE2dRomTYDpJk6z6L9wecSfhfE6M9ZTHUdyQkoC46arIDhEV84Q==}
+    peerDependencies:
+      preact-render-to-string: '>=5'
+    peerDependenciesMeta:
+      preact-render-to-string:
+        optional: true
+
   prettier@2.8.8:
     resolution: {integrity: sha512-tdN8qQGvNjw4CHbY+XXk0JgCXn9QiF21a55rBe5LJAU+kDyC4WQn4+awm2Xfk2lQMk5fKup9XgzTZtGkjBdP9Q==}
     engines: {node: '>=10.13.0'}
@@ -3248,6 +3326,8 @@ snapshots:
 
   '@oxlint/binding-win32-x64-msvc@1.73.0':
     optional: true
+
+  '@preact/signals-core@1.14.4': {}
 
   '@rolldown/binding-android-arm64@1.1.5':
     optional: true
@@ -4525,6 +4605,8 @@ snapshots:
       nanoid: 3.3.15
       picocolors: 1.1.1
       source-map-js: 1.2.1
+
+  preact@10.29.7: {}
 
   prettier@2.8.8: {}
 

@@ -63,7 +63,6 @@ The `contracts` package itself does not carry a charter. It IS the contract stra
 ## Related Charters
 
 - [API Conventions](./api-conventions.md) — proven patterns for public API shape across the platform.
-- [Reactivity](./reactivity.md) — signal-based reactivity model and layer constraints.
 
 ## Out of Scope
 

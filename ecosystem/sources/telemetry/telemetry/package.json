@@ -1,5 +1,5 @@
 {
-  "name": "@ai.assistant/tests",
+  "name": "@ai.assistant/telemetry",
   "version": "0.0.0",
   "private": true,
   "license": "MIT",
@@ -7,7 +7,7 @@
   "repository": {
     "type": "git",
     "url": "https://github.com/olavoasantos/ai.assistant.git",
-    "directory": "ecosystem/tests"
+    "directory": "ecosystem/sources/telemetry/telemetry"
   },
   "files": [
     "dist"
@@ -19,50 +19,20 @@
       "import": "./dist/index.js",
       "require": "./dist/index.cjs"
     },
-    "./error": {
-      "types": "./dist/error/index.d.ts",
-      "import": "./dist/error/index.js",
-      "require": "./dist/error/index.cjs"
-    },
-    "./error/mocks": {
-      "types": "./dist/error/mocks.d.ts",
-      "import": "./dist/error/mocks.js",
-      "require": "./dist/error/mocks.cjs"
-    },
-    "./events": {
-      "types": "./dist/events/index.d.ts",
-      "import": "./dist/events/index.js",
-      "require": "./dist/events/index.cjs"
-    },
-    "./helpers": {
-      "types": "./dist/helpers/index.d.ts",
-      "import": "./dist/helpers/index.js",
-      "require": "./dist/helpers/index.cjs"
-    },
-    "./telemetry": {
-      "types": "./dist/telemetry/index.d.ts",
-      "import": "./dist/telemetry/index.js",
-      "require": "./dist/telemetry/index.cjs"
-    },
-    "./validation": {
-      "types": "./dist/validation/index.d.ts",
-      "import": "./dist/validation/index.js",
-      "require": "./dist/validation/index.cjs"
-    },
     "./register": "./dist/register.d.ts"
   },
   "scripts": {
-    "build": "vite build && cp register.d.ts dist/register.d.ts",
+    "build": "vite build && cp src/register.d.ts dist/register.d.ts",
     "check": "run-p type:check lint:check format:check test:check",
     "clean": "rm -rf dist node_modules .testing",
     "dev": "vite build --watch",
     "docs:generate": "node --experimental-strip-types --experimental-transform-types --no-warnings node_modules/@local.pkg/generate-reference-docs/src/cli.ts",
     "fix": "run-p lint:fix format:fix",
-    "format:check": "oxfmt -c .prettierrc.mjs --check *.ts error/ events/ helpers/ telemetry/ validation/",
-    "format:fix": "oxfmt -c .prettierrc.mjs --write *.ts error/ events/ helpers/ telemetry/ validation/",
-    "lint:check": "oxlint -c oxlint.json *.ts error/ events/ helpers/ telemetry/ validation/",
-    "lint:fix": "oxlint -c oxlint.json --fix *.ts error/ events/ helpers/ telemetry/ validation/",
-    "test:check": "run-p test:unit",
+    "format:check": "oxfmt -c .prettierrc.mjs --check src/",
+    "format:fix": "oxfmt -c .prettierrc.mjs --write src/",
+    "lint:check": "oxlint -c oxlint.json src/",
+    "lint:fix": "oxlint -c oxlint.json --fix src/",
+    "test:check": "run-p test:unit test:integration",
     "test:unit": "vitest run --config vitest.unit.config.ts",
     "test:unit:watch": "vitest --config vitest.unit.config.ts",
     "test:integration": "vitest run --config vitest.integration.config.ts",
@@ -70,9 +40,16 @@
     "test:performance": "vitest bench --config vitest.bench.config.ts",
     "type:check": "tsc --noEmit"
   },
-  "dependencies": {},
+  "dependencies": {
+    "@ai.assistant/error": "workspace:*",
+    "@ai.assistant/event-emitter": "workspace:*",
+    "@ai.assistant/helpers": "workspace:*",
+    "@ai.assistant/validation": "workspace:*",
+    "@preact/signals-core": "catalog:"
+  },
   "devDependencies": {
     "@ai.assistant/contracts": "workspace:*",
+    "@ai.assistant/tests": "workspace:*",
     "@local.pkg/config": "workspace:*",
     "@local.pkg/generate-reference-docs": "workspace:*",
     "@types/node": "catalog:",
