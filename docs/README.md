@@ -22,7 +22,9 @@ API reference documentation, auto-generated from source code docblocks. Look thi
 
 ## Per-Package Documentation
 
-Individual packages may have their own documentation in `packages/<name>/src/docs/` following the same Diataxis structure.
+Individual packages may have their own documentation in `src/docs/` following the same Diataxis structure. For ecosystem source packages, this means `ecosystem/sources/<entity>/<source>/src/docs/`.
+
+Local development infrastructure is documented in [`../infrastructure/README.md`](../infrastructure/README.md) because it is not a workspace package.
 
 ## Contributing to Documentation
 

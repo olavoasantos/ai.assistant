@@ -12,26 +12,137 @@ Run `pnpm run check` before starting work and after completing tasks. Record wha
 
 ## Monorepo Structure
 
-This is a pnpm monorepo. Workspace packages use the `@ai.assistant/*` scope.
+This is a pnpm monorepo. Product and ecosystem workspace packages use the `@ai.assistant/*` scope. Internal tooling uses the `@local.pkg/*` scope.
 
-| Directory     | Purpose                                               | Published |
-| ------------- | ----------------------------------------------------- | --------- |
-| `packages/*`  | Shared libraries — may be published                   | Yes       |
-| `apps/*`      | Applications (web, server, CLI, docs site, etc.)      | No        |
-| `examples/*`  | Demonstration projects showing real-world package use | No        |
-| `local.pkg/*` | Internal monorepo tooling (config, scripts)           | Never     |
-| `.ignore/`   | Product planning — design docs, projects, milestones  | —         |
+| Directory               | Purpose                                                        | Published |
+| ----------------------- | -------------------------------------------------------------- | --------- |
+| `ecosystem/charter/`    | Implementation-agnostic charters for ecosystem entities        | No        |
+| `ecosystem/contracts/`  | TypeScript contract strand consumed by implementations         | Yes       |
+| `ecosystem/tests/`      | Shared compliance tests and test utilities                     | Yes       |
+| `ecosystem/sources/*/*` | Concrete source implementations of ecosystem entities          | Yes       |
+| `domains/*`             | Domain/business logic built on ecosystem contracts and sources | Yes       |
+| `clients/*`             | User-facing applications and service entry points              | No        |
+| `infrastructure/*`      | Local development infrastructure for clients and services      | Never     |
+| `internal/*`            | Internal monorepo tooling (config, scripts, generators)        | Never     |
+| `.ignore/`              | Product planning — design docs, projects, milestones           | —         |
 
-**Always use the scaffold command** when creating new workspace entries. Never manually create package directories:
+Use the scaffold command when creating workspace entries it supports. Do not hand-roll package boilerplate when a scaffold exists.
 
 ```bash
-pnpm scaffold package my-lib                    # → packages/my-lib/
-pnpm scaffold app my-app                        # → apps/my-app/
-pnpm scaffold example my-example                # → examples/my-example/
-pnpm scaffold local my-tool                     # → local.pkg/my-tool/
+pnpm scaffold client my-client                  # → clients/my-client/
+pnpm scaffold implementation error error        # → ecosystem/sources/error/error/
+pnpm scaffold local my-tool                     # → internal/my-tool/
 ```
 
-This ensures correct `package.json`, `tsconfig.json`, vitest configs, lint/format configs, and README with branded header. Run `pnpm install` after scaffolding.
+Ecosystem entities and sources must mirror the strand layout below. Use the implementation scaffold for source packages, then fill in or update the matching charter, contract, and shared compliance-test strands. Run `pnpm install` after scaffolding.
+
+Local infrastructure is managed by Docker Compose through root package scripts. It is not a workspace package and should not be scaffolded.
+
+### Ecosystem Helix Layout
+
+Ecosystem entities are organized by helix strand:
+
+```text
+ecosystem/
+├── charter/<entity>/README.md
+├── contracts/<entity>/index.ts
+├── tests/<entity>/index.ts
+└── sources/<entity>/<source>/
+```
+
+Example:
+
+```text
+ecosystem/
+├── charter/error/README.md
+├── contracts/error/index.ts
+├── tests/error/index.ts
+└── sources/error/error/
+```
+
+Strand responsibilities:
+
+- **`charter/`** describes implementation-agnostic purpose, invariants, and constraints.
+- **`contracts/`** contains TypeScript types and interfaces that consumers depend on. It must not contain runtime behaviour.
+- **`tests/`** contains shared compliance tests and test utilities for all implementations of an entity.
+- **`sources/`** contains concrete implementations. A source package may include its own `CHARTER.md` for implementation-specific invariants.
+
+When changing an ecosystem entity, use the helix discipline and reconcile all four strands: charter, contract, tests, and implementation. If the `work-on-ecosystem-entity` skill is available, use it for these tasks.
+
+#### Ecosystem Strand Package Exceptions
+
+`ecosystem/contracts` and `ecosystem/tests` are workspace packages, but they intentionally do **not** use `src/`. Their entry points live at the package root:
+
+- `index.ts`
+- `<entity>/index.ts`
+- `register.d.ts`
+
+Do not move these files into `src/` unless the ecosystem layout is deliberately redesigned.
+
+`ecosystem/sources/<entity>/<source>/` packages do use `src/` and follow the normal package conventions for implementation code.
+
+#### Ecosystem Dependency Direction
+
+- `ecosystem/contracts` imports no source implementations.
+- `ecosystem/tests` may import contracts and test libraries, but not source implementations.
+- `ecosystem/sources/*/*` may import contracts and shared compliance tests.
+- Source implementations must satisfy contracts with TypeScript `implements` clauses where applicable.
+- Compliance tests from `ecosystem/tests/<entity>` should run as integration tests in each source package.
+
+#### Ecosystem Source Naming
+
+Source packages live at `ecosystem/sources/<entity>/<source>/`.
+
+The first path segment names the entity. The second names the implementation/source.
+
+Examples:
+
+- `ecosystem/sources/error/error` — default error implementation.
+- `ecosystem/sources/storage/memory` — in-memory storage implementation.
+- `ecosystem/sources/storage/indexed-db` — IndexedDB storage implementation.
+
+#### Working on Ecosystem Entities
+
+Before modifying an ecosystem entity:
+
+1. Read `ecosystem/charter/README.md`.
+2. Read `ecosystem/charter/<entity>/README.md`.
+3. Read `ecosystem/contracts/<entity>/index.ts`.
+4. Read `ecosystem/tests/<entity>/index.ts`.
+5. Read `ecosystem/sources/<entity>/<source>/CHARTER.md` if present.
+6. Read the source implementation and its local tests.
+
+After modifying behaviour, reconcile:
+
+- Charter: updated or checked unchanged.
+- Contract: updated or checked unchanged.
+- Tests: updated or checked unchanged.
+- Implementation: updated or checked unchanged.
+
+Run package-specific checks while iterating and always run `pnpm run check` before finishing.
+
+### Local Infrastructure (`infrastructure/`)
+
+`infrastructure/` contains local-only Docker Compose services used while developing clients and service integrations. It can include databases, cache, object storage, email capture, analytics, logging/error reporting, monitoring, search, authentication, and feature flags.
+
+Infrastructure is development support, not product code:
+
+- Do not import infrastructure files from ecosystem, domain, or client packages.
+- Do not place application logic in Docker Compose files, Nginx config, or service config.
+- Do not treat local service credentials as production secrets. Defaults are for local development only.
+- Keep generated/persistent service data out of git via each service's `.gitignore`.
+- When adding or removing a service, update `.services`, `infrastructure/README.md`, root `README.md`, and any relevant client setup docs.
+
+Root commands:
+
+```bash
+pnpm infra:certificates  # generate local HTTPS certificates for aiassistant.test
+pnpm infra:start         # start services listed in .services
+pnpm infra:build         # rebuild and start services listed in .services
+pnpm infra:stop          # stop services listed in .services
+```
+
+The root `.services` file is the source of truth for which Compose files participate in `infra:*` commands. The root `Dockerfile` builds the local Nginx reverse proxy and copies `infrastructure/*/*.conf` into `/etc/nginx/sites-enabled/`.
 
 ### Product Planning (`.ignore/`)
 
@@ -61,9 +172,17 @@ This ensures correct `package.json`, `tsconfig.json`, vitest configs, lint/forma
 
 ### Entry Points (per package)
 
+Most implementation packages use:
+
 - **`src/index.ts`** — Public API exports. Must be environment-agnostic.
 - **`src/index.css`** — Central stylesheet for the module's critical styles (if applicable).
 - **`src/register.d.ts`** — Global type declarations. Used for triple-slash references (e.g. Vite's `client`, Vitest's `globals`), global module definitions, and extending global namespaces to declare services, environment variables, and configurations the module provides.
+
+Ecosystem strand packages use intentional exceptions:
+
+- **`ecosystem/contracts/index.ts`** and **`ecosystem/contracts/<entity>/index.ts`** are contract entry points.
+- **`ecosystem/tests/index.ts`** and **`ecosystem/tests/<entity>/index.ts`** are shared compliance-test entry points.
+- **`ecosystem/contracts/register.d.ts`** and **`ecosystem/tests/register.d.ts`** remain at the package root.
 
 ---
 
@@ -416,7 +535,7 @@ Applies to all four levels (primitives, components, blocks, layouts):
 
 ### Placement
 
-Tests live in a `specs/` folder colocated with the code they test:
+Implementation-specific tests live in a `specs/` folder colocated with the code they test:
 
 ```
 src/classes/
@@ -426,12 +545,14 @@ src/classes/
     └── MyClass.bench.ts
 ```
 
+Shared ecosystem compliance tests live in `ecosystem/tests/<entity>/` and are consumed by source packages as integration tests.
+
 ### Rules
 
 - **One test file per production file.** `parseSelector.ts` → `specs/parseSelector.unit.ts`. Never group multiple production files into a shared spec.
 - **What needs tests**: every class, service, hook, utility, and data source. Components with non-trivial logic. Errors only if they have custom methods.
 - **Performance benchmarks** use Vitest's `bench` API. Use realistic inputs, keep setup outside the `bench()` callback, name benchmarks by workload not function name.
-- **Shared test utilities** live in `src/testing/` within modules (mocks, factories).
+- **Shared test utilities** live in `src/testing/` within implementation modules, or in `ecosystem/tests/<entity>/` when they verify ecosystem contract compliance across source implementations.
 
 ---
 
@@ -447,7 +568,7 @@ docs/
 └── references/     # API docs (auto-generated from docblocks)
 ```
 
-Module-specific documentation lives in `packages/<module>/src/docs/` with the same structure.
+Module-specific documentation lives in the package's `src/docs/` folder with the same structure. For ecosystem source packages, that means `ecosystem/sources/<entity>/<source>/src/docs/`.
 
 **Every public export must have JSDoc/TSDoc comments.** Reference documentation is generated from these docblocks.
 
@@ -461,7 +582,7 @@ Module-specific documentation lives in `packages/<module>/src/docs/` with the sa
 4. **Consolidate imports from the same path.** Never have multiple import statements from the same module. Use inline `type` qualifiers to mix type and value imports in one statement: `import {type Foo, bar} from '...'`. This project uses `verbatimModuleSyntax`, so type-only imports must be marked — use the inline `type` keyword per-specifier rather than a separate `import type` statement when the same path also has value imports.
 5. **No `/index` in import paths.** Import from the directory or the specific file, never `'../types/index'`.
 6. **No file extensions in imports.** Use `'../types/Thing'`, not `'../types/Thing.ts'`. The bundler and TypeScript's `moduleResolution: bundler` handle resolution.
-7. **No deep nesting.** Module subdirectories support at most one level of nesting.
+7. **No deep nesting.** Module subdirectories support at most one level of nesting, except for the required ecosystem strand path `ecosystem/sources/<entity>/<source>/`, local infrastructure configuration that mirrors tool-native paths, and explicitly documented migration folders.
 8. **Register types in `register.d.ts`.** When a module provides services, environment variables, or configurations, declare them via global namespace extension.
 9. **No new dependencies without consent.** Ask before adding packages.
 10. **No issue/milestone IDs in code artifacts.** Issue and milestone identifiers (e.g. `M1T17`) are internal tracking tools. Never reference them in docblocks, commit messages, changeset descriptions, comments, or any other code artifact.

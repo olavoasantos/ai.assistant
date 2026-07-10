@@ -17,81 +17,142 @@
 
 ## About
 
-Yet another AI agent harness
+`ai.assistant` is a TypeScript application framework and agent harness organized around contract-driven ecosystem primitives, domain packages, and client entry points.
+
+The ecosystem layer follows a helix discipline: each entity keeps its purpose, consumed surface, compliance tests, and implementations in separate but mirrored strands.
 
 ## Getting Started
 
-
 ```bash
 pnpm install
+pnpm build
+pnpm run check
+```
+
+Start local infrastructure only when a client or integration needs it; see [Local Infrastructure](#local-infrastructure).
+
+For active development:
+
+```bash
 pnpm dev
 ```
 
 ## Monorepo Structure
 
-This is a pnpm monorepo. Workspace packages use the `@ai.assistant/*` scope.
+This is a pnpm monorepo. Product and ecosystem workspace packages use the `@ai.assistant/*` scope. Internal tooling uses the `@local.pkg/*` scope.
 
-### `packages/`
+| Directory               | Purpose                                                               |
+| ----------------------- | --------------------------------------------------------------------- |
+| `ecosystem/charter/`    | Implementation-agnostic charters for ecosystem entities               |
+| `ecosystem/contracts/`  | TypeScript contract strand consumed by implementations                |
+| `ecosystem/tests/`      | Shared compliance tests and test utilities                            |
+| `ecosystem/sources/*/*` | Concrete source implementations of ecosystem entities                 |
+| `domains/*`             | Domain/business logic built on ecosystem contracts and sources        |
+| `clients/*`             | User-facing applications and service entry points                     |
+| `infrastructure/*`      | Local development infrastructure for clients and service integrations |
+| `internal/*`            | Internal monorepo tooling                                             |
+| `docs/`                 | Project documentation using Diataxis                                  |
+| `.ignore/`              | Product planning artifacts                                            |
+| `.agents/`              | Agent skills and workflow configuration                               |
 
-Shared libraries that may be published to npm. These are the core building blocks of the project — UI components, utilities, domain logic, etc. Each package has its own `package.json`, build config, and test setup. Other packages, apps, and examples import from these using the `@ai.assistant/*` scope.
+## Ecosystem Helix Layout
 
-### `apps/`
+Ecosystem entities mirror across four strands:
 
-Applications — web apps, servers, CLI tools, documentation sites, desktop apps, etc. Apps consume packages but are never published. In a library-focused monorepo, the documentation site typically lives here.
+```text
+ecosystem/
+├── charter/<entity>/README.md
+├── contracts/<entity>/index.ts
+├── tests/<entity>/index.ts
+└── sources/<entity>/<source>/
+```
 
-### `examples/`
+Example:
 
-Small, focused projects that demonstrate how packages are used by real consumers. These simulate an external user's experience — they import from `@ai.assistant/*` packages via workspace links, not relative paths. Useful for testing ergonomics and catching integration issues.
+```text
+ecosystem/
+├── charter/error/README.md
+├── contracts/error/index.ts
+├── tests/error/index.ts
+└── sources/error/error/
+```
 
-### `local.pkg/`
+Strands have separate responsibilities:
 
-Internal monorepo tooling — shared build configs, test configs, code generation scripts, and other infrastructure. These are private packages that are **never published**. Every local package has its own README documenting its purpose and usage.
+- `charter/` defines purpose, invariants, and constraints.
+- `contracts/` defines the TypeScript surface consumers depend on.
+- `tests/` defines shared compliance tests and test utilities.
+- `sources/` contains concrete implementations.
 
-### `docs/`
+`ecosystem/contracts` and `ecosystem/tests` intentionally keep entry points at the package root rather than under `src/`. Source packages under `ecosystem/sources/<entity>/<source>/` use normal `src/` package layout.
 
-Project-wide documentation following the [Diataxis framework](https://diataxis.fr/):
+## Scaffolding
 
-- `docs/learn/` — Explanation guides (understanding-oriented)
-- `docs/recipes/` — How-to guides (task-oriented)
-- `docs/tutorials/` — Tutorials (learning by doing)
-- `docs/references/` — API reference (auto-generated from docblocks)
+Use the scaffold command for supported workspace entries:
 
-Individual packages may also have their own docs in `packages/<name>/src/docs/`.
+```bash
+pnpm scaffold client my-client
+pnpm scaffold implementation error error
+pnpm scaffold local my-tool
+```
 
-### `.ignore/`
+The implementation scaffold creates source packages at:
 
-Product planning artifacts — design documents, project roadmaps, milestones, and issues. See [AGENTS.md](AGENTS.md) for the full planning structure.
+```text
+ecosystem/sources/<entity>/<source>/
+```
 
-### `.agents/`
+After scaffolding, run `pnpm install` and fill in the matching charter, contract, and compliance-test strands as needed.
 
-AI agent configuration — skills that define workflows for planning, implementation, documentation writing, and code quality checks. Skills are loaded by AI coding agents (Claude, Cursor, Codex, pi, etc.) to follow project-specific conventions.
+## Local Infrastructure
+
+The `infrastructure/` folder provides local Docker Compose services for developing clients and service integrations. It is intentionally broad so clients can opt into analytics, logging/error reporting, email capture, monitoring, storage, search, authentication, feature flags, cache, and database services as needed.
+
+Root commands manage the Compose files listed in `.services`:
+
+```bash
+pnpm infra:certificates  # generate local HTTPS certs for aiassistant.test
+pnpm infra:start         # start local infrastructure
+pnpm infra:build         # rebuild and start local infrastructure
+pnpm infra:stop          # stop local infrastructure
+```
+
+Most browser-facing tools are available through `https://*.aiassistant.test` via the local Nginx reverse proxy. See [infrastructure/README.md](infrastructure/README.md) for the service catalog and setup details.
 
 ## Scripts
 
-| Script                  | Description                                                 |
-| ----------------------- | ----------------------------------------------------------- |
-| `pnpm build`            | Build all packages                                          |
-| `pnpm check`            | Build + run all quality checks (lint, format, types, tests) |
-| `pnpm dev`              | Start all packages in dev mode                              |
-| `pnpm fix`              | Auto-fix lint and formatting issues                         |
-| `pnpm test:unit`        | Run unit tests across all packages                          |
-| `pnpm test:integration` | Run integration tests across all packages                   |
-| `pnpm test:performance` | Run performance benchmarks                                  |
+| Script                    | Description                                                         |
+| ------------------------- | ------------------------------------------------------------------- |
+| `pnpm build`              | Build all workspace packages that define a build script             |
+| `pnpm run check`          | Run workspace lint, format, type, and test checks where defined     |
+| `pnpm dev`                | Start package dev/watch tasks where defined                         |
+| `pnpm fix`                | Auto-fix lint and formatting issues where supported                 |
+| `pnpm docs:generate`      | Generate reference documentation from public docblocks              |
+| `pnpm test:unit`          | Run unit tests across workspace packages                            |
+| `pnpm test:integration`   | Run integration tests across workspace packages                     |
+| `pnpm test:performance`   | Run performance benchmarks                                          |
+| `pnpm type:check`         | Run TypeScript checks across workspace packages                     |
+| `pnpm infra:certificates` | Generate local HTTPS certificates for `aiassistant.test`            |
+| `pnpm infra:start`        | Start local Docker infrastructure listed in `.services`             |
+| `pnpm infra:build`        | Rebuild and start local Docker infrastructure listed in `.services` |
+| `pnpm infra:stop`         | Stop local Docker infrastructure listed in `.services`              |
+| `pnpm version:create`     | Create a changeset                                                  |
+| `pnpm version:bump`       | Apply pending changesets                                            |
 
 ## Tech Stack
 
-- **Runtime:** [Preact](https://preactjs.com/)
-- **Language:** [TypeScript](https://www.typescriptlang.org/) (v6, `verbatimModuleSyntax`, `moduleResolution: bundler`)
+- **Language:** [TypeScript](https://www.typescriptlang.org/) with `verbatimModuleSyntax` and `moduleResolution: bundler`
 - **Build:** [Vite](https://vite.dev/)
 - **Test:** [Vitest](https://vitest.dev/)
 - **Lint:** [oxlint](https://oxc-project.github.io/docs/guide/usage/linter.html)
 - **Format:** [oxfmt](https://oxc-project.github.io/docs/guide/usage/formatter.html)
-- **Package Manager:** [pnpm](https://pnpm.io/) (workspaces)
+- **Local Infrastructure:** [Docker Compose](https://docs.docker.com/compose/) with Nginx reverse proxy
+- **Package Manager:** [pnpm](https://pnpm.io/) workspaces
 - **Versioning:** [Changesets](https://github.com/changesets/changesets)
 
 ## Conventions
 
-See [AGENTS.md](AGENTS.md) for the full coding conventions, file structure rules, component architecture, and contribution guidelines. These conventions are enforced by AI agents and human contributors alike.
+See [AGENTS.md](AGENTS.md) for coding conventions, file structure rules, component architecture, helix reconciliation, and contribution guidelines. These conventions are enforced by AI agents and human contributors alike.
 
 ## Contributors
 
@@ -99,4 +160,4 @@ See [AGENTS.md](AGENTS.md) for the full coding conventions, file structure rules
 
 ### AI Disclosure
 
-Significant portions of this codebase were written with AI coding agents via [pi](https://github.com/badlogic/pi-mono), using Claude Opus 4.6, GPT-5.4, and Gemini 3.1 Pro Preview. All AI-generated code was reviewed and approved by a human contributor.
+Significant portions of this codebase were written with AI coding agents via [pi](https://github.com/badlogic/pi-mono), using OpenAI GPT, Z.ai's GLM, and other models. All AI-generated code was reviewed and approved by a human contributor.
