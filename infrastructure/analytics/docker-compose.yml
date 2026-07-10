@@ -17,10 +17,11 @@ services:
     networks:
       - aiassistant-analytics
     healthcheck:
-      test: ['CMD-SHELL', 'curl http://aiassistant-analytics/api/heartbeat']
+      test: ['CMD-SHELL', 'curl -f http://localhost:3001/api/heartbeat']
       interval: 5s
       timeout: 5s
       retries: 5
+      start_period: 10s
 
   aiassistant-analytics-database:
     container_name: 'aiassistant-analytics-database'

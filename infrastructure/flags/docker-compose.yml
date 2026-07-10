@@ -5,6 +5,7 @@ services:
     environment:
       - DATABASE_URL=postgresql://admin:winnipeg123@aiassistant-flags-database:5432/flags
       - DATABASE_SSL=false
+      - UNLEASH_URL=https://flags.aiassistant.test
       - UNLEASH_DEFAULT_ADMIN_USERNAME=admin
       - UNLEASH_DEFAULT_ADMIN_PASSWORD=winnipeg123
     ports:

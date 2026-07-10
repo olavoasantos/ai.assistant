@@ -221,6 +221,7 @@ dist/
 # Environment files (catch-all)
 .env*
 !.env.example
+!.env.*.example
 
 # Testing output (Vitest coverage, Playwright reports/results)
 .testing/
