@@ -12,6 +12,7 @@ export default defineConfig({
     lib: {
       entry: {
         index: 'index.ts',
+        'application/index': 'application/index.ts',
         'error/index': 'error/index.ts',
         'error/mocks': 'error/mocks.ts',
         'events/index': 'events/index.ts',

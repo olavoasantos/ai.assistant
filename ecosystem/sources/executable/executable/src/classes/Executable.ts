@@ -66,10 +66,10 @@ export class Executable extends EventEmitter<ExecutableEventMap> implements Exec
    * @param options - Scope infrastructure and lifecycle behavior.
    * @returns An executable at `initialized` state.
    */
-  static async create<Instance extends Executable>(
-    this: new (options?: ExecutableOptions) => Instance,
+  static async create(
+    this: new (options?: ExecutableOptions) => Executable,
     options?: ExecutableOptions,
-  ): Promise<Instance> {
+  ): Promise<Executable> {
     const executable = new this(options);
     await executable.initialize();
     return executable;
@@ -81,10 +81,10 @@ export class Executable extends EventEmitter<ExecutableEventMap> implements Exec
    * @param options - Scope infrastructure and lifecycle behavior.
    * @returns An executable at `active` state.
    */
-  static async activate<Instance extends Executable>(
-    this: new (options?: ExecutableOptions) => Instance,
+  static async activate(
+    this: new (options?: ExecutableOptions) => Executable,
     options?: ExecutableOptions,
-  ): Promise<Instance> {
+  ): Promise<Executable> {
     const executable = new this(options);
     await executable.activate();
     return executable;
@@ -428,7 +428,7 @@ export class Executable extends EventEmitter<ExecutableEventMap> implements Exec
    * @param options - Child-specific scope and lifecycle options.
    * @returns A child executable at `created` state.
    */
-  fork(options: ExecutableOptions = {}): this {
+  fork(options: ExecutableOptions = {}): Executable {
     this.ensureNotTerminal();
     return new (this.constructor as new (options?: ExecutableOptions, parent?: Executable) => this)(
       options,

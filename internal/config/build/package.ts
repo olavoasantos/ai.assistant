@@ -36,7 +36,7 @@ export function createViteConfig(options: {
       sourcemap: true,
       lib: {entry},
       rollupOptions: {
-        external: [scopePattern, /^node:/, ...external],
+        external: [scopePattern, /^preact(?:\/|$)/, /^@preact\//, /^node:/, ...external],
         output: [
           {
             format: 'es',
