@@ -97,7 +97,7 @@ export function runExecutableComplianceTests(factories: ExecutableComplianceTest
         expect(executable.status).toBe('disposed');
       });
 
-      it('rejects lifecycle control and forking after disposal', async () => {
+      it('rejects lifecycle control after disposal', async () => {
         const executable = createExecutable();
         await executable.dispose();
 
@@ -105,12 +105,11 @@ export function runExecutableComplianceTests(factories: ExecutableComplianceTest
         await expect(executable.initialize()).rejects.toThrow();
         await expect(executable.activate()).rejects.toThrow();
         await expect(executable.deactivate()).rejects.toThrow();
-        expect(() => executable.fork()).toThrow();
       });
     });
 
     describe('orchestration', () => {
-      it('runs callback, ordinary plugins, then kernel for each phase', async () => {
+      it('runs specialization callbacks before the kernel', async () => {
         const order: string[] = [];
         const executable = createExecutable({
           lifecycles: {
@@ -121,16 +120,6 @@ export function runExecutableComplianceTests(factories: ExecutableComplianceTest
               order.push('callback:initialize');
             },
           },
-          plugins: [
-            lifecyclePlugin('provider', {
-              create() {
-                order.push('plugin:create');
-              },
-              initialize() {
-                order.push('plugin:initialize');
-              },
-            }),
-          ],
           kernel: lifecyclePlugin('kernel', {
             create() {
               order.push('kernel:create');
@@ -145,34 +134,21 @@ export function runExecutableComplianceTests(factories: ExecutableComplianceTest
 
         expect(order).toEqual([
           'callback:create',
-          'plugin:create',
           'kernel:create',
           'callback:initialize',
-          'plugin:initialize',
           'kernel:initialize',
         ]);
       });
 
-      it('runs ordinary create hooks concurrently', async () => {
-        const pending = deferred();
-        const second = vi.fn();
+      it('does not invoke inherited plugins without specialization callbacks', async () => {
+        const create = vi.fn();
         const executable = createExecutable({
-          plugins: [
-            lifecyclePlugin('first', {
-              async create() {
-                await pending.promise;
-              },
-            }),
-            lifecyclePlugin('second', {create: second}),
-          ],
+          plugins: [lifecyclePlugin('provider', {create})],
         });
 
-        const initializing = executable.initialize();
-        await vi.waitFor(() => {
-          expect(second).toHaveBeenCalledOnce();
-        });
-        pending.resolve();
-        await initializing;
+        await executable.initialize();
+
+        expect(create).not.toHaveBeenCalled();
       });
 
       it('binds lifecycle callbacks to the executable', async () => {
@@ -193,7 +169,7 @@ export function runExecutableComplianceTests(factories: ExecutableComplianceTest
     });
 
     describe('renderable composition', () => {
-      it('composes callback, plugin, and kernel layers in order', async () => {
+      it('composes specialization and kernel layers in order', async () => {
         const executable = createExecutable({
           renderable: 1,
           lifecycles: {
@@ -202,25 +178,17 @@ export function runExecutableComplianceTests(factories: ExecutableComplianceTest
               return 2;
             },
           },
-          plugins: [
-            lifecyclePlugin('provider', {
-              ui({children}) {
-                expect(children).toBe(2);
-                return 3;
-              },
-            }),
-          ],
           kernel: lifecyclePlugin('kernel', {
             ui({children}) {
-              expect(children).toBe(3);
-              return 4;
+              expect(children).toBe(2);
+              return 3;
             },
           }),
         });
 
         await executable.initialize();
 
-        expect(executable.ui.value).toBe(4);
+        expect(executable.ui.value).toBe(3);
       });
 
       it('retains a nullish renderable returned by a composition layer', async () => {
@@ -260,13 +228,6 @@ export function runExecutableComplianceTests(factories: ExecutableComplianceTest
               observations.push(`callback:${this.status}:${error.message}`);
             },
           },
-          plugins: [
-            lifecyclePlugin('provider', {
-              error(error) {
-                observations.push(`plugin:${executable.status}:${error.message}`);
-              },
-            }),
-          ],
           kernel: lifecyclePlugin('kernel', {
             error(error) {
               observations.push(`kernel:${executable.status}:${error.message}`);
@@ -283,7 +244,6 @@ export function runExecutableComplianceTests(factories: ExecutableComplianceTest
         expect(executable.error?.message).toBe('creation failed');
         expect(observations).toEqual([
           'callback:creating:creation failed',
-          'plugin:creating:creation failed',
           'kernel:creating:creation failed',
           'event:error:creation failed',
         ]);
@@ -305,40 +265,7 @@ export function runExecutableComplianceTests(factories: ExecutableComplianceTest
       });
     });
 
-    describe('forking and concurrency', () => {
-      it('creates an independent child with inherited scoped infrastructure', async () => {
-        const parent = createExecutable({scope: 'root'});
-        const child = parent.fork();
-
-        expect(child.status).toBe('created');
-        expect(child.scope).toBe('child');
-        expect(child.telemetry.namespace).toBe('root.child');
-        expect(child.ui).not.toBe(parent.ui);
-
-        await child.activate();
-        expect(parent.status).toBe('created');
-      });
-
-      it('inherits plugins and accepts child-specific plugins', () => {
-        const parent = createExecutable({plugins: [lifecyclePlugin('parent')]});
-        const child = parent.fork({plugins: [lifecyclePlugin('child')]});
-
-        expect(parent.pluginContainer.size).toBe(1);
-        expect(child.pluginContainer.size).toBe(2);
-      });
-
-      it('bubbles child events until the child is disposed', async () => {
-        const parent = createExecutable();
-        const child = parent.fork();
-        const listener = vi.fn();
-        parent.on('executable:activated', listener);
-
-        await child.activate();
-        await child.dispose();
-
-        expect(listener).toHaveBeenCalledOnce();
-      });
-
+    describe('concurrency', () => {
       it('coalesces concurrent calls for the same transition', async () => {
         const create = vi.fn();
         const activate = vi.fn();
@@ -371,18 +298,4 @@ function lifecyclePlugin(
   hooks: Partial<Plugin<KernelLifecycles>> = {},
 ): Plugin<KernelLifecycles> {
   return {name, ...hooks};
-}
-
-/** Build a manually resolvable promise for concurrency assertions. */
-function deferred(): {promise: Promise<void>; resolve: () => void} {
-  let resolvePromise: (() => void) | undefined;
-  const promise = new Promise<void>((resolve) => {
-    resolvePromise = resolve;
-  });
-  return {
-    promise,
-    resolve() {
-      resolvePromise?.();
-    },
-  };
 }

@@ -24,6 +24,11 @@
       "import": "./dist/application/index.js",
       "require": "./dist/application/index.cjs"
     },
+    "./intents": {
+      "types": "./dist/intents/index.d.ts",
+      "import": "./dist/intents/index.js",
+      "require": "./dist/intents/index.cjs"
+    },
     "./error": {
       "types": "./dist/error/index.d.ts",
       "import": "./dist/error/index.js",
@@ -83,10 +88,10 @@
     "dev": "vite build --watch",
     "docs:generate": "node --experimental-strip-types --experimental-transform-types --no-warnings node_modules/@local.pkg/generate-reference-docs/src/cli.ts",
     "fix": "run-p *:fix",
-    "format:check": "oxfmt -c .prettierrc.mjs --check *.ts application/",
-    "format:fix": "oxfmt -c .prettierrc.mjs --write *.ts application/",
-    "lint:check": "oxlint -c oxlint.json *.ts application/",
-    "lint:fix": "oxlint -c oxlint.json --fix *.ts application/",
+    "format:check": "oxfmt -c .prettierrc.mjs --check *.ts application/ error/ events/ executable/ intents/ plugins/ renderable/ service-container/ signals/ telemetry/ utilities/ validation/",
+    "format:fix": "oxfmt -c .prettierrc.mjs --write *.ts application/ error/ events/ executable/ intents/ plugins/ renderable/ service-container/ signals/ telemetry/ utilities/ validation/",
+    "lint:check": "oxlint -c oxlint.json *.ts application/ error/ events/ executable/ intents/ plugins/ renderable/ service-container/ signals/ telemetry/ utilities/ validation/",
+    "lint:fix": "oxlint -c oxlint.json --fix *.ts application/ error/ events/ executable/ intents/ plugins/ renderable/ service-container/ signals/ telemetry/ utilities/ validation/",
     "test:check": "run-p test:unit",
     "test:unit": "vitest run --config vitest.unit.config.ts",
     "test:unit:watch": "vitest --config vitest.unit.config.ts",

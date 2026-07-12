@@ -20,12 +20,10 @@ describe('Application', () => {
     expect(activate).toHaveBeenCalledOnce();
   });
 
-  it('preserves the Application subtype when forking', () => {
-    const parent = new Application();
+  it('owns the root intent registry', () => {
+    const application = new Application();
 
-    const child = parent.fork();
-
-    expect(child).toBeInstanceOf(Application);
-    expect(child.scope).toBe('child');
+    expect(application.intents).toBeDefined();
+    expect(application.intents.isEmpty).toBe(true);
   });
 });

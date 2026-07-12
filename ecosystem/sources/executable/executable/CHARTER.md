@@ -6,19 +6,21 @@ Provide the default implementation of the [Executable entity](../../../charter/e
 
 ## Implementation Choices
 
-- Lifecycle state, fatal error, base renderable, and composed renderable are stored in `@preact/signals-core` signals. Consumers receive plain status/error accessors and a read-only renderable signal.
-- Lifecycle phases are measured by the scope's `@ai.assistant/telemetry` instance using phase names such as `initialize` and `activate`.
-- Services use `@ai.assistant/service-container`; ordinary plugins and the kernel use `@ai.assistant/plugin-engine`; lifecycle events use `@ai.assistant/event-emitter`.
-- The default kernel is a named plugin with no hooks.
+- Lifecycle state, fatal error, base renderable, and composed renderable use signals.
+- Lifecycle phases are measured by the scoped telemetry instance.
+- Services use `@ai.assistant/service-container`; inherited plugins and the kernel use `@ai.assistant/plugin-engine`; lifecycle events use `@ai.assistant/event-emitter`.
+- The plugin container is inherited by specialized child constructors but is never invoked automatically.
+- Specialization callbacks decide which plugin hooks and strategies apply; the kernel runner always receives standard executable hooks afterward.
 - Empty renderables use Preact's `Fragment` vnode.
-- Internal mutable state is stored behind module-local symbols. Only `Executable` and `ExecutableGuard` are public runtime exports.
+- Internal mutable state uses module-local symbols and is not exported.
 
 ## Identity
 
-`ExecutableGuard` accepts values branded by `Symbol.for('ai.assistant:Executable')`. It does not use `instanceof`.
+`ExecutableGuard` validates `Symbol.for('ai.assistant:Executable')` rather than using `instanceof`.
 
 ## Constraints
 
-- The implementation satisfies `@ai.assistant/contracts/executable` with an explicit `implements` clause.
-- It runs the shared compliance suite from `@ai.assistant/tests/executable` as integration tests.
-- Source-specific behavior must remain aligned with the entity charter, contract, and compliance suite.
+- `Executable` explicitly implements `@ai.assistant/contracts/executable`.
+- The source runs `@ai.assistant/tests/executable` as integration tests.
+- Public generic forking is unsupported; specialized child construction is an implementation seam.
+- Source behavior remains aligned with the entity charter, contract, and compliance suite.

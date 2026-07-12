@@ -18,6 +18,7 @@ export default defineConfig({
         'events/index': 'events/index.ts',
         'executable/index': 'executable/index.ts',
         'helpers/index': 'helpers/index.ts',
+        'intents/index': 'intents/index.ts',
         'plugins/index': 'plugins/index.ts',
         'service-container/index': 'service-container/index.ts',
         'telemetry/index': 'telemetry/index.ts',

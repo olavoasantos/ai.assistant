@@ -12,7 +12,7 @@
 
 ## About
 
-The default implementation of ai.assistant's executable lifecycle primitive. It coordinates scoped services, plugins, telemetry, rendering, lifecycle events, and child scopes for entities that need explicit initialization, activation, deactivation, and disposal.
+The default implementation of ai.assistant's executable lifecycle primitive. It coordinates scoped services, inherited plugins, telemetry, rendering, lifecycle events, and one kernel while leaving plugin lifecycle policy to deliberate specializations.
 
 ## Installation
 
@@ -37,9 +37,8 @@ const worker = await Executable.activate({
   },
 });
 
-const task = worker.fork({scope: 'task'});
-await task.activate();
-await task.dispose();
+await worker.deactivate();
+await worker.activate();
 await worker.dispose();
 ```
 

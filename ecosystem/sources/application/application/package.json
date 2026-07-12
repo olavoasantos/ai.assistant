@@ -42,6 +42,7 @@
   },
   "dependencies": {
     "@ai.assistant/executable": "workspace:*",
+    "@ai.assistant/intents": "workspace:*",
     "@ai.assistant/validation": "workspace:*"
   },
   "devDependencies": {

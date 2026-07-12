@@ -24,31 +24,44 @@ describe('Executable', () => {
     expect(create).not.toHaveBeenCalled();
   });
 
-  it('static factories settle at their named lifecycle states', async () => {
+  it('settles static factories at their named lifecycle states', async () => {
     await expect(Executable.create()).resolves.toMatchObject({status: 'initialized'});
     await expect(Executable.activate()).resolves.toMatchObject({status: 'active'});
   });
 
-  it('preserves subclasses through factories and forks', async () => {
-    class SpecializedExecutable extends Executable {}
+  it('invokes the kernel but never invokes inherited plugins automatically', async () => {
+    const providerCreate = vi.fn();
+    const kernelCreate = vi.fn();
+    const executable = new Executable({
+      plugins: [plugin('provider', {create: providerCreate})],
+      kernel: plugin('kernel', {create: kernelCreate}),
+    });
 
-    const root = await SpecializedExecutable.create();
-    const child = root.fork();
+    await executable.initialize();
 
-    expect(root).toBeInstanceOf(SpecializedExecutable);
-    expect(child).toBeInstanceOf(SpecializedExecutable);
+    expect(providerCreate).not.toHaveBeenCalled();
+    expect(kernelCreate).toHaveBeenCalledOnce();
   });
 
-  it('injects the scope container into plugin and kernel contexts', async () => {
+  it('lets specialization callbacks select inherited plugin hooks', async () => {
+    const providerCreate = vi.fn();
+    const executable = new Executable({
+      plugins: [plugin('provider', {create: providerCreate})],
+      lifecycles: {
+        async create() {
+          await this.pluginContainer.parallel({hook: 'create', args: []});
+        },
+      },
+    });
+
+    await executable.initialize();
+
+    expect(providerCreate).toHaveBeenCalledOnce();
+  });
+
+  it('injects the scope container into kernel contexts', async () => {
     const contexts: unknown[] = [];
     const executable = new Executable({
-      plugins: [
-        plugin('provider', {
-          create() {
-            contexts.push(this.container);
-          },
-        }),
-      ],
       kernel: plugin('kernel', {
         create() {
           contexts.push(this.container);
@@ -58,7 +71,7 @@ describe('Executable', () => {
 
     await executable.initialize();
 
-    expect(contexts).toEqual([executable.container, executable.container]);
+    expect(contexts).toEqual([executable.container]);
   });
 
   it('continues owned cleanup after a disposal callback fails', async () => {

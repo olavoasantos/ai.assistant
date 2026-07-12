@@ -7,7 +7,11 @@ import type {
   KernelLifecycles,
   LifecycleCallbacks,
 } from '@ai.assistant/contracts/executable';
-import type {ContextFactory, ReadonlyPluginContainer} from '@ai.assistant/contracts/plugins';
+import type {
+  ContextFactory,
+  Plugin,
+  ReadonlyPluginContainer,
+} from '@ai.assistant/contracts/plugins';
 import type {Renderable} from '@ai.assistant/contracts/renderable';
 import type {ReadonlySignal, Signal} from '@ai.assistant/contracts/signals';
 import type {TelemetryForkOptions} from '@ai.assistant/contracts/telemetry';
@@ -36,65 +40,57 @@ import {
   EXECUTABLE_TRANSITIONS,
   EXECUTABLE_UI,
 } from '../constants';
-import type {TransitionState} from '../types';
+import type {ExecutableFactoryInstance, TransitionState} from '../types';
 
 /**
- * Default lifecycle and scope implementation for executable entities.
+ * Default lifecycle and kernel orchestration implementation.
  *
- * The class owns lifecycle state, scoped foundation infrastructure, plugin and
- * kernel orchestration, rendering composition, fatal-error normalization, and
- * child-scope inheritance. Specializations inject phase behavior through
- * {@link ExecutableOptions.lifecycles} rather than replacing state-machine
- * methods.
+ * Executable owns state transitions, scoped infrastructure, one kernel, error
+ * normalization, rendering, and disposal. It deliberately does not invoke
+ * inherited plugins. Specializations select plugin hooks and strategies through
+ * lifecycle callbacks, while the kernel always receives the standard executable
+ * lifecycle hooks.
  *
- * @example
- * ```ts
- * const executable = await Executable.activate({
- *   scope: 'worker',
- *   lifecycles: {
- *     create() {
- *       this.container.value('Configuration', configuration);
- *     },
- *   },
- * });
- * ```
+ * @template PluginLifecycles - Hook map exposed by the inherited plugin container.
  */
-export class Executable extends EventEmitter<ExecutableEventMap> implements ExecutableContract {
+export class Executable<
+  PluginLifecycles extends Record<keyof PluginLifecycles, (...args: any[]) => any> =
+    KernelLifecycles,
+>
+  extends EventEmitter<ExecutableEventMap>
+  implements ExecutableContract<PluginLifecycles>
+{
   /**
    * Construct and initialize an executable.
    *
-   * @param options - Scope infrastructure and lifecycle behavior.
+   * @param options - Scoped infrastructure and specialization behavior.
    * @returns An executable at `initialized` state.
    */
-  static async create(
-    this: new (options?: ExecutableOptions) => Executable,
-    options?: ExecutableOptions,
-  ): Promise<Executable> {
-    const executable = new this(options);
-    await executable.initialize();
-    return executable;
+  static async create<Options, Instance extends ExecutableFactoryInstance>(
+    this: new (options?: Options) => Instance,
+    options?: Options,
+  ): Promise<Instance> {
+    return await new this(options).initialize();
   }
 
   /**
    * Construct, initialize, and activate an executable.
    *
-   * @param options - Scope infrastructure and lifecycle behavior.
+   * @param options - Scoped infrastructure and specialization behavior.
    * @returns An executable at `active` state.
    */
-  static async activate(
-    this: new (options?: ExecutableOptions) => Executable,
-    options?: ExecutableOptions,
-  ): Promise<Executable> {
-    const executable = new this(options);
-    await executable.activate();
-    return executable;
+  static async activate<Options, Instance extends ExecutableFactoryInstance>(
+    this: new (options?: Options) => Instance,
+    options?: Options,
+  ): Promise<Instance> {
+    return await new this(options).activate();
   }
 
   /** Symbol brand for cross-boundary identity checks. */
   readonly [EXECUTABLE_IDENTIFIER] = true as const;
 
-  /** @internal Parent executable in the scope chain. */
-  [EXECUTABLE_PARENT]: Executable | undefined;
+  /** @internal Parent executable used by deliberate specializations. */
+  [EXECUTABLE_PARENT]: Executable<PluginLifecycles> | undefined;
 
   /** @internal Signal holding the normalized fatal error. */
   [EXECUTABLE_ERROR]: Signal<ApplicationError | null> = signal(null);
@@ -102,8 +98,8 @@ export class Executable extends EventEmitter<ExecutableEventMap> implements Exec
   /** @internal Service container for this scope. */
   [EXECUTABLE_SERVICE_CONTAINER]: ServiceContainer<Services>;
 
-  /** @internal Ordinary plugin container for this scope. */
-  [EXECUTABLE_PLUGIN_CONTAINER]: PluginContainer<KernelLifecycles>;
+  /** @internal Inherited plugin container controlled by the specialization. */
+  [EXECUTABLE_PLUGIN_CONTAINER]: PluginContainer<PluginLifecycles>;
 
   /** @internal Telemetry instance for this scope. */
   [EXECUTABLE_TELEMETRY]: Telemetry;
@@ -120,11 +116,11 @@ export class Executable extends EventEmitter<ExecutableEventMap> implements Exec
   /** @internal Signal holding the composed renderable. */
   [EXECUTABLE_UI]: Signal<Renderable>;
 
-  /** @internal Runner for the scope's kernel. */
+  /** @internal Runner for this scope's unique kernel. */
   [EXECUTABLE_KERNEL]: PluginRunner<KernelLifecycles>;
 
-  /** @internal Injected lifecycle callbacks. */
-  [EXECUTABLE_LIFECYCLES]: LifecycleCallbacks;
+  /** @internal Injected specialization behavior. */
+  [EXECUTABLE_LIFECYCLES]: LifecycleCallbacks<PluginLifecycles>;
 
   /** @internal In-flight lifecycle transitions. */
   [EXECUTABLE_TRANSITIONS]: TransitionState = {
@@ -135,15 +131,18 @@ export class Executable extends EventEmitter<ExecutableEventMap> implements Exec
   };
 
   /**
-   * Construct an executable at `created` state.
+   * Construct an inert executable at `created` state.
    *
-   * Construction wires owned infrastructure but invokes no lifecycle behavior
-   * and starts no asynchronous work.
+   * The optional parent is an implementation seam for deliberate executable
+   * specializations. Public generic forking is intentionally unsupported.
    *
-   * @param options - Scope infrastructure and lifecycle behavior.
-   * @param parent - Parent executable used internally by {@link fork}.
+   * @param options - Scoped infrastructure and specialization behavior.
+   * @param parent - Parent executable whose scoped infrastructure is inherited.
    */
-  constructor(options: ExecutableOptions = {}, parent?: Executable) {
+  constructor(
+    options: ExecutableOptions<PluginLifecycles> = {},
+    parent?: Executable<PluginLifecycles>,
+  ) {
     super();
 
     this[EXECUTABLE_PARENT] = parent;
@@ -165,16 +164,14 @@ export class Executable extends EventEmitter<ExecutableEventMap> implements Exec
       : new ServiceContainer<Services>();
     this.addChild(this[EXECUTABLE_SERVICE_CONTAINER]);
 
-    const contextFactory: ContextFactory = () => ({
+    const contextFactory: ContextFactory<Plugin<PluginLifecycles>> = () => ({
       container: this[EXECUTABLE_SERVICE_CONTAINER],
     });
-    this[EXECUTABLE_KERNEL] = new PluginRunner<KernelLifecycles>(
-      options.kernel ?? EXECUTABLE_NOOP_KERNEL,
-      {
-        telemetry: this[EXECUTABLE_TELEMETRY].fork('kernel'),
-        context: contextFactory(options.kernel ?? EXECUTABLE_NOOP_KERNEL),
-      },
-    );
+    const kernel = options.kernel ?? EXECUTABLE_NOOP_KERNEL;
+    this[EXECUTABLE_KERNEL] = new PluginRunner<KernelLifecycles>(kernel, {
+      telemetry: this[EXECUTABLE_TELEMETRY].fork('kernel'),
+      context: {container: this[EXECUTABLE_SERVICE_CONTAINER]},
+    });
     this.addChild(this[EXECUTABLE_KERNEL]);
 
     const pluginTelemetry = this[EXECUTABLE_TELEMETRY].fork('plugins');
@@ -184,7 +181,7 @@ export class Executable extends EventEmitter<ExecutableEventMap> implements Exec
           telemetry: pluginTelemetry,
           contextFactory,
         })
-      : new PluginContainer<KernelLifecycles>({
+      : new PluginContainer<PluginLifecycles>({
           plugins: options.plugins,
           telemetry: pluginTelemetry,
           contextFactory,
@@ -209,8 +206,8 @@ export class Executable extends EventEmitter<ExecutableEventMap> implements Exec
     return this[EXECUTABLE_ERROR].value;
   }
 
-  /** The ordinary plugin container for this scope. */
-  get pluginContainer(): ReadonlyPluginContainer<KernelLifecycles> {
+  /** The inherited plugin container controlled by this specialization. */
+  get pluginContainer(): ReadonlyPluginContainer<PluginLifecycles> {
     return this[EXECUTABLE_PLUGIN_CONTAINER];
   }
 
@@ -224,7 +221,7 @@ export class Executable extends EventEmitter<ExecutableEventMap> implements Exec
     return this[EXECUTABLE_STATUS].value;
   }
 
-  /** The telemetry instance for this scope. */
+  /** The scope's telemetry instance. */
   get telemetry(): Telemetry {
     return this[EXECUTABLE_TELEMETRY];
   }
@@ -234,11 +231,7 @@ export class Executable extends EventEmitter<ExecutableEventMap> implements Exec
     return this[EXECUTABLE_UI];
   }
 
-  /**
-   * Advance a newly created scope through creation and initialization.
-   *
-   * @returns This executable after the transition settles.
-   */
+  /** Advance a newly created scope through creation and initialization. */
   async initialize(): Promise<this> {
     this.ensureNotTerminal();
     if (this[EXECUTABLE_TRANSITIONS].initializing != null) {
@@ -262,14 +255,11 @@ export class Executable extends EventEmitter<ExecutableEventMap> implements Exec
 
         this[EXECUTABLE_STATUS].value = 'creating';
         await this[EXECUTABLE_LIFECYCLES].create?.call(this);
-        await this[EXECUTABLE_PLUGIN_CONTAINER].parallel({hook: 'create', args: []});
         await this[EXECUTABLE_KERNEL].trigger({hook: 'create', args: []});
-
         this.composeRenderable();
 
         this[EXECUTABLE_STATUS].value = 'initializing';
         await this[EXECUTABLE_LIFECYCLES].initialize?.call(this);
-        await this[EXECUTABLE_PLUGIN_CONTAINER].sequential({hook: 'initialize', args: []});
         await this[EXECUTABLE_KERNEL].trigger({hook: 'initialize', args: []});
 
         this[EXECUTABLE_STATUS].value = 'initialized';
@@ -284,11 +274,7 @@ export class Executable extends EventEmitter<ExecutableEventMap> implements Exec
     return this;
   }
 
-  /**
-   * Activate an initialized or inactive scope.
-   *
-   * @returns This executable after the transition settles.
-   */
+  /** Activate an initialized or inactive scope, initializing it when needed. */
   async activate(): Promise<this> {
     this.ensureNotTerminal();
     if (this[EXECUTABLE_STATUS].peek() === 'created') {
@@ -305,8 +291,9 @@ export class Executable extends EventEmitter<ExecutableEventMap> implements Exec
           this[EXECUTABLE_TRANSITIONS].initializing,
           this[EXECUTABLE_TRANSITIONS].deactivating,
         ]);
+        const current = this[EXECUTABLE_STATUS].peek();
         if (
-          !['initialized', 'inactive'].includes(this[EXECUTABLE_STATUS].peek()) ||
+          (current !== 'initialized' && current !== 'inactive') ||
           this[EXECUTABLE_TRANSITIONS].disposing != null
         ) {
           timer.cancel();
@@ -315,7 +302,6 @@ export class Executable extends EventEmitter<ExecutableEventMap> implements Exec
 
         this[EXECUTABLE_STATUS].value = 'activating';
         await this[EXECUTABLE_LIFECYCLES].activate?.call(this);
-        await this[EXECUTABLE_PLUGIN_CONTAINER].sequential({hook: 'activate', args: []});
         await this[EXECUTABLE_KERNEL].trigger({hook: 'activate', args: []});
         this[EXECUTABLE_STATUS].value = 'active';
         this.emit('executable:activated');
@@ -329,11 +315,7 @@ export class Executable extends EventEmitter<ExecutableEventMap> implements Exec
     return this;
   }
 
-  /**
-   * Deactivate an active scope.
-   *
-   * @returns This executable after the transition settles.
-   */
+  /** Deactivate an active scope. */
   async deactivate(): Promise<this> {
     this.ensureNotTerminal();
     if (this[EXECUTABLE_TRANSITIONS].deactivating != null) {
@@ -366,12 +348,7 @@ export class Executable extends EventEmitter<ExecutableEventMap> implements Exec
     return this;
   }
 
-  /**
-   * Permanently dispose this scope and its owned infrastructure.
-   *
-   * @returns This executable after disposal settles.
-   * @throws When the executable is already disposed or has fatally failed.
-   */
+  /** Permanently dispose this scope and its owned infrastructure. */
   async dispose(): Promise<this> {
     if (this[EXECUTABLE_STATUS].peek() === 'disposed') {
       throw new ApplicationError({
@@ -422,29 +399,11 @@ export class Executable extends EventEmitter<ExecutableEventMap> implements Exec
     return this;
   }
 
-  /**
-   * Create a child scope while preserving the runtime subclass.
-   *
-   * @param options - Child-specific scope and lifecycle options.
-   * @returns A child executable at `created` state.
-   */
-  fork(options: ExecutableOptions = {}): Executable {
-    this.ensureNotTerminal();
-    return new (this.constructor as new (options?: ExecutableOptions, parent?: Executable) => this)(
-      options,
-      this,
-    );
-  }
-
-  /** Compose the base renderable through callbacks, plugins, and kernel. */
+  /** Compose the base renderable through specialization and kernel layers. */
   protected composeRenderable(): void {
     this[EXECUTABLE_UI].value = this[EXECUTABLE_LIFECYCLES].renderable
       ? this[EXECUTABLE_LIFECYCLES].renderable.call(this, this[EXECUTABLE_RENDERABLE].value)
       : this[EXECUTABLE_RENDERABLE].value;
-    this[EXECUTABLE_UI].value = this[EXECUTABLE_PLUGIN_CONTAINER].renderable({
-      hook: 'ui',
-      args: [{children: this[EXECUTABLE_UI].value}],
-    });
     if (this[EXECUTABLE_KERNEL].has('ui')) {
       this[EXECUTABLE_UI].value = this[EXECUTABLE_KERNEL].triggerSync({
         hook: 'ui',
@@ -453,17 +412,22 @@ export class Executable extends EventEmitter<ExecutableEventMap> implements Exec
     }
   }
 
+  /** Update and immediately recompose the base renderable. */
+  protected render(renderable: Renderable): void {
+    this[EXECUTABLE_RENDERABLE].value = renderable;
+    this.composeRenderable();
+  }
+
   /** Run the complete deactivation phase. */
   protected async runDeactivationPhase(): Promise<void> {
     this[EXECUTABLE_STATUS].value = 'deactivating';
     await this[EXECUTABLE_LIFECYCLES].deactivate?.call(this);
-    await this[EXECUTABLE_PLUGIN_CONTAINER].sequential({hook: 'deactivate', args: []});
     await this[EXECUTABLE_KERNEL].trigger({hook: 'deactivate', args: []});
     this[EXECUTABLE_STATUS].value = 'inactive';
     this.emit('executable:deactivated');
   }
 
-  /** Run disposal hooks and owned cleanup while retaining the first failure. */
+  /** Run disposal callbacks and cleanup while retaining the first failure. */
   protected async runDisposalPhase(): Promise<void> {
     let firstFailure: unknown;
 
@@ -471,11 +435,6 @@ export class Executable extends EventEmitter<ExecutableEventMap> implements Exec
       await this[EXECUTABLE_LIFECYCLES].dispose?.call(this);
     } catch (thrown) {
       firstFailure = thrown;
-    }
-    try {
-      await this[EXECUTABLE_PLUGIN_CONTAINER].sequential({hook: 'dispose', args: []});
-    } catch (thrown) {
-      firstFailure ??= thrown;
     }
     try {
       await this[EXECUTABLE_KERNEL].trigger({hook: 'dispose', args: []});
@@ -530,11 +489,6 @@ export class Executable extends EventEmitter<ExecutableEventMap> implements Exec
       this[EXECUTABLE_LIFECYCLES].error?.call(this, error);
     } catch {
       // The original lifecycle failure remains authoritative.
-    }
-    try {
-      this[EXECUTABLE_PLUGIN_CONTAINER].sequentialSync({hook: 'error', args: [error]});
-    } catch {
-      // Error hooks cannot replace the original lifecycle failure.
     }
     try {
       this[EXECUTABLE_KERNEL].triggerSync({hook: 'error', args: [error]});

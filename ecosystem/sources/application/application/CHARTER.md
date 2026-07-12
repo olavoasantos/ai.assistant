@@ -6,15 +6,16 @@ Provide the default implementation of the [Application entity](../../../charter/
 
 ## Implementation Choices
 
-- `Application` extends the default `@ai.assistant/executable` implementation and maps `serviceProviders` to its ordinary plugin container.
-- Root scope defaults to `app`; executable child-scope construction supplies the `child` default.
+- `Application` extends `@ai.assistant/executable` with the complete service-provider lifecycle hook map.
+- Lifecycle callbacks invoke ordinary provider hooks through the public typed plugin-container surface; Application does not access Executable internals.
+- Provider creation, activation, deactivation, and disposal are concurrent; initialization is sequential; rendering is synchronous.
+- The root scope defaults to `app`.
 - Application identity uses `Symbol.for('ai.assistant:Application')` and is validated by `ApplicationGuard`.
-- Service-provider and kernel factory utilities preserve literal names and support either fixed definitions or caller-supplied factories.
-- Lifecycle state, orchestration, rendering, telemetry, events, errors, and inherited infrastructure remain owned by the executable implementation.
+- Construction creates one `@ai.assistant/intents` registry from the configured scope templates and eager definitions.
+- Application has no public fork. Specialized child executables choose their own provider lifecycle family.
 
 ## Constraints
 
-- The implementation satisfies `@ai.assistant/contracts/application` with an explicit `implements` clause.
-- It runs the shared compliance suite from `@ai.assistant/tests/application` as integration tests.
-- It does not access or publish executable implementation symbols.
-- It does not contain intent integration or other deferred subsystem wiring.
+- `Application` explicitly implements `@ai.assistant/contracts/application`.
+- The source runs `@ai.assistant/tests/application` as integration tests.
+- Lifecycle transitions, kernel orchestration, telemetry, events, errors, and owned cleanup remain controlled by Executable.

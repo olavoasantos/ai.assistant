@@ -6,7 +6,7 @@
 
 ## About
 
-The default top-level application scope for ai.assistant. It assembles service providers and a kernel on the executable lifecycle foundation while preserving scoped services, telemetry, rendering, events, and independent child applications.
+The unique application root for ai.assistant. It assigns ordinary lifecycle semantics to service providers, owns one kernel, and exposes the root intent registry on the executable lifecycle foundation.
 
 ## Installation
 
@@ -26,13 +26,26 @@ const configurationProvider = createServiceProvider({
   },
 });
 
+const taskKernel = {name: 'task'};
 const application = await Application.activate({
   serviceProviders: [configurationProvider()],
+  intents: {
+    scopes: [{scope: 'task', kernels: [taskKernel]}],
+    definitions: [
+      {
+        action: 'run',
+        mimeType: 'application/vnd.ai.assistant.task',
+        scope: 'task',
+        kernel: 'task',
+        mode: 'detached',
+        handler() {},
+      },
+    ],
+  },
 });
 
-const worker = application.fork({scope: 'worker'});
-await worker.activate();
-await worker.dispose();
+const activity = await application.intents.invoke('run:application/vnd.ai.assistant.task');
+await activity.dispose();
 await application.dispose();
 ```
 

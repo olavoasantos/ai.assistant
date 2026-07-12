@@ -119,23 +119,11 @@ export function runApplicationComplianceTests(factories: ApplicationComplianceTe
       expect(received).toBe(application.container);
     });
 
-    it('forks application children with inherited and additional providers', async () => {
-      const inherited = vi.fn();
-      const additional = vi.fn();
-      const parent = createApplication({
-        serviceProviders: [provider('inherited', {create: inherited})],
-      });
-      const child = parent.fork({
-        serviceProviders: [provider('additional', {create: additional})],
-      });
+    it('exposes the root intent registry', () => {
+      const application = createApplication();
 
-      await child.initialize();
-
-      expect(child.scope).toBe('child');
-      expect(child.status).toBe('initialized');
-      expect(child.pluginContainer.size).toBe(2);
-      expect(inherited).toHaveBeenCalledOnce();
-      expect(additional).toHaveBeenCalledOnce();
+      expect(application.intents).toBeDefined();
+      expect(application.intents.isEmpty).toBe(true);
     });
   });
 }
