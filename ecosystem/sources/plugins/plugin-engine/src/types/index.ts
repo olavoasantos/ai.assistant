@@ -3,7 +3,7 @@ import type {HookCacheOptions, HookOrder, Plugin} from '@ai.assistant/contracts/
 
 /** Event map for {@link PluginRunner} lifecycle events. */
 export interface PluginRunnerEvents {
-  'plugin:hook.error': {plugin: string; hook: string; error: unknown};
+  'plugin:hook.errored': {plugin: string; hook: string; error: unknown};
   'plugin:hook.cache.hit': {plugin: string; hook: string; key: string};
 }
 
@@ -14,7 +14,7 @@ export interface PluginContainerEvents {
   'plugin:container.forked': {childSize: number};
   'plugin:container.frozen': undefined;
   'plugin:container.disposed': undefined;
-  'plugin:hook.error': {hook: string; error: unknown};
+  'plugin:hook.errored': {hook: string; error: unknown};
 }
 
 /** Normalized form of a hook — bare functions and object forms unified. */

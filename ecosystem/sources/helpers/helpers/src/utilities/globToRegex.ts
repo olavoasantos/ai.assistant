@@ -11,8 +11,8 @@ import {GLOB_TO_REGEX_CACHE, GLOB_TO_REGEX_SPECIAL_CHARACTERS} from '../constant
  *
  * @example
  * ```ts
- * globToRegex('tool:*').test('tool:start'); // true
- * globToRegex('tool:*').test('turn:start'); // false
+ * globToRegex('tool:*').test('tool:started'); // true
+ * globToRegex('tool:*').test('turn:started'); // false
  * ```
  */
 export function globToRegex(glob: string): RegExp {

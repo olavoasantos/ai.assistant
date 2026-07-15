@@ -4,7 +4,7 @@ import {EventGuard} from '../EventGuard';
 
 describe('EventGuard', () => {
   it('should accept a branded Event instance', () => {
-    const event = new Event('test:event');
+    const event = new Event('test:emitted');
 
     expect(EventGuard.is(event)).toBe(true);
   });
@@ -25,7 +25,7 @@ describe('EventGuard', () => {
 
   it('should reject plain objects that structurally resemble an Event', () => {
     const fake = {
-      type: 'test:event',
+      type: 'test:emitted',
       details: undefined,
       bubbles: true,
       origin: null,
@@ -47,7 +47,7 @@ describe('EventGuard', () => {
   });
 
   it('should parse a branded Event and return it', () => {
-    const event = new Event('test:event');
+    const event = new Event('test:emitted');
 
     expect(EventGuard.parse(event)).toBe(event);
   });

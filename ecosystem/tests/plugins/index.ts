@@ -288,7 +288,7 @@ export function runPluginsComplianceTests(factories: PluginsComplianceTestSuite)
             createPlugin('beta', {setup: () => calls.push('continued')}),
           ],
         });
-        container.on('plugin:hook.error', listener);
+        container.on('plugin:hook.errored', listener);
 
         await container.sequential({hook: 'setup', args: []});
 

@@ -48,8 +48,8 @@ import type {QueuedEntry} from '../types';
  * Each instance maintains its own local queue. Flushing cascades depth-first
  * through the fork tree: children flush before the parent. Each instance
  * emits its own entries as events on itself, using the fully qualified
- * namespace as the event type. Events then bubble up through the
- * EventEmitter parent chain.
+ * metric followed by `.recorded` as the event type. Events then bubble up
+ * through the EventEmitter parent chain.
  *
  * @example
  * ```ts
@@ -396,7 +396,7 @@ export class Telemetry extends EventEmitter<TelemetryEventMap> implements Teleme
 
       for (const queued of queueSnapshot) {
         try {
-          const eventType = `telemetry:${this.qualifiedName(queued.name)}` as const;
+          const eventType = `telemetry:${this.qualifiedName(queued.name)}.recorded` as const;
           this.emit(eventType, {details: queued.entry});
         } catch (error) {
           errors.push(error);

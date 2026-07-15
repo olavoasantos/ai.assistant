@@ -706,10 +706,10 @@ describe('PluginContainer', () => {
       expect(handler2).not.toHaveBeenCalled();
     });
 
-    it('emits plugin:hook.error when errors occur', async () => {
+    it('emits plugin:hook.errored when errors occur', async () => {
       const container = new PluginContainer<TestHooks>({telemetry: createTestTelemetry()});
       const listener = vi.fn();
-      container.on('plugin:hook.error', listener);
+      container.on('plugin:hook.errored', listener);
       container.add(
         createPlugin('alpha', {
           setup: {

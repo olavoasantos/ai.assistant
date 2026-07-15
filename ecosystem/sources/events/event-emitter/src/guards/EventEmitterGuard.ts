@@ -12,7 +12,7 @@ import {EVENT_EMITTER_IDENTIFIER} from '../constants';
  * ```ts
  * if (EventEmitterGuard.is(value)) {
  *   // value is narrowed to EventEmitter
- *   value.on('some:event', listener);
+ *   value.on('example:occurred', listener);
  * }
  * ```
  */

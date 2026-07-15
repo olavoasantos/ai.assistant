@@ -9,7 +9,7 @@ A typed, bubbling event emitter for the entire platform. Any subsystem that need
 - The single event dispatch mechanism for all framework and application code.
 - A parent-child bubbling system: events flow from the origin emitter up through ancestors.
 - A glob-pattern subscription system: listeners can match families of events (e.g. `tool:*`).
-- A typed payload carrier: each event name maps to a specific payload type via the global `Events` interface.
+- A typed payload carrier: each event name maps to a specific payload type through the emitter's `EventMap` type parameter.
 
 ## What It Is Not
 
@@ -26,6 +26,12 @@ A typed, bubbling event emitter for the entire platform. Any subsystem that need
 - `EventEmitter` instances are identified by a `Symbol.for('ai.assistant:EventEmitter')` brand.
 - Identity checks never use `instanceof`. Guards use symbol presence via validation rules, surviving multiple package versions, bundler deduplication failures, and realm crossings.
 - Brand identity is trust-based: objects without the brand symbol are rejected, but any code that knows the brand key string can forge acceptance. This is the deliberate `Symbol.for()` trade-off shared across all foundation modules.
+
+### Event Names
+
+- Typed occurrence events follow `{domain}:{dot.notation.pastTenseVerb}`.
+- The emitter dispatches arbitrary string event maps without rewriting or runtime-validating names; the subsystem declaring an event map owns naming compliance.
+- Glob selectors may end in `*` because they match event families rather than announce occurrences.
 
 ### Event Lifecycle
 
@@ -66,7 +72,7 @@ A typed, bubbling event emitter for the entire platform. Any subsystem that need
 ### Glob Patterns
 
 - Patterns containing `*` match event names where `*` expands to any substring.
-- `tool:*` matches `tool:start`, `tool:end`, etc.
+- `tool:*` matches `tool:started`, `tool:ended`, etc.
 - Exact patterns (no `*`) use strict equality matching.
 
 ### Emit Overloads
@@ -89,9 +95,9 @@ Event payloads are typed through the `EventMap` generic parameter on `EventEmitt
 import {EventEmitter} from '@ai.assistant/event-emitter';
 
 interface ToolEvents {
-  'tool:start': {toolId: string};
-  'tool:end': {toolId: string; success: boolean};
-  'turn:end': undefined;
+  'tool:started': {toolId: string};
+  'tool:ended': {toolId: string; success: boolean};
+  'turn:ended': undefined;
 }
 
 const emitter = new EventEmitter<ToolEvents>();

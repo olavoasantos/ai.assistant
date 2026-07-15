@@ -3,11 +3,11 @@ import {Event} from '../Event';
 import {EventEmitter} from '../EventEmitter';
 
 interface TestEvents {
-  'session:label': string | undefined;
-  'tool:end': {success: boolean; toolId: string};
-  'tool:start': {toolId: string};
-  'turn:end': undefined;
-  'turn:start': {turnId: string};
+  'session:labeled': string | undefined;
+  'tool:ended': {success: boolean; toolId: string};
+  'tool:started': {toolId: string};
+  'turn:ended': undefined;
+  'turn:started': {turnId: string};
 }
 
 describe('EventEmitter', () => {
@@ -15,16 +15,16 @@ describe('EventEmitter', () => {
     const emitter = new EventEmitter<TestEvents>();
     const listener = vi.fn();
 
-    emitter.on('tool:start', (event) => {
-      expectTypeOf(event.type).toEqualTypeOf<'tool:start'>();
+    emitter.on('tool:started', (event) => {
+      expectTypeOf(event.type).toEqualTypeOf<'tool:started'>();
       expectTypeOf(event.details).toEqualTypeOf<{toolId: string}>();
       listener(event.details.toolId);
     });
 
-    const event = emitter.emit('tool:start', {details: {toolId: 'tool-1'}});
+    const event = emitter.emit('tool:started', {details: {toolId: 'tool-1'}});
 
     expect(listener).toHaveBeenCalledWith('tool-1');
-    expect(event.type).toBe('tool:start');
+    expect(event.type).toBe('tool:started');
     expect(event.details).toEqual({toolId: 'tool-1'});
   });
 
@@ -32,12 +32,12 @@ describe('EventEmitter', () => {
     const emitter = new EventEmitter<TestEvents>();
     const listener = vi.fn();
 
-    emitter.on('turn:end', (event) => {
+    emitter.on('turn:ended', (event) => {
       expectTypeOf(event.details).toEqualTypeOf<undefined>();
       listener(event.details);
     });
 
-    const event = emitter.emit('turn:end');
+    const event = emitter.emit('turn:ended');
 
     expect(listener).toHaveBeenCalledWith(undefined);
     expect(event.details).toBeUndefined();
@@ -47,30 +47,30 @@ describe('EventEmitter', () => {
     const emitter = new EventEmitter<TestEvents>();
 
     // @ts-expect-error payload-bearing events require explicit details
-    const invalidEmit = () => emitter.emit('tool:start');
+    const invalidEmit = () => emitter.emit('tool:started');
 
-    expectTypeOf(invalidEmit).toEqualTypeOf<() => Event<'tool:start', {toolId: string}>>();
+    expectTypeOf(invalidEmit).toEqualTypeOf<() => Event<'tool:started', {toolId: string}>>();
   });
 
   it('should still require options when the payload union includes undefined', () => {
     const emitter = new EventEmitter<TestEvents>();
 
     // @ts-expect-error union payloads still require explicit emit options
-    const invalidEmit = () => emitter.emit('session:label');
+    const invalidEmit = () => emitter.emit('session:labeled');
 
-    expectTypeOf(invalidEmit).toEqualTypeOf<() => Event<'session:label', string | undefined>>();
+    expectTypeOf(invalidEmit).toEqualTypeOf<() => Event<'session:labeled', string | undefined>>();
   });
 
   it('should allow undefined details when explicitly provided for union payloads', () => {
     const emitter = new EventEmitter<TestEvents>();
     const listener = vi.fn();
 
-    emitter.on('session:label', (event) => {
+    emitter.on('session:labeled', (event) => {
       expectTypeOf(event.details).toEqualTypeOf<string | undefined>();
       listener(event.details);
     });
 
-    const event = emitter.emit('session:label', {details: undefined});
+    const event = emitter.emit('session:labeled', {details: undefined});
 
     expect(listener).toHaveBeenCalledWith(undefined);
     expect(event.details).toBeUndefined();
@@ -81,27 +81,27 @@ describe('EventEmitter', () => {
     const listener = vi.fn();
 
     emitter.on('tool:*', (event) => {
-      expectTypeOf(event.type).toEqualTypeOf<'tool:start' | 'tool:end'>();
+      expectTypeOf(event.type).toEqualTypeOf<'tool:started' | 'tool:ended'>();
       expectTypeOf(event.details).toEqualTypeOf<
         {toolId: string} | {success: boolean; toolId: string}
       >();
       listener(event.type);
     });
 
-    emitter.emit('tool:start', {details: {toolId: 'tool-1'}});
-    emitter.emit('tool:end', {details: {success: true, toolId: 'tool-1'}});
+    emitter.emit('tool:started', {details: {toolId: 'tool-1'}});
+    emitter.emit('tool:ended', {details: {success: true, toolId: 'tool-1'}});
 
-    expect(listener).toHaveBeenNthCalledWith(1, 'tool:start');
-    expect(listener).toHaveBeenNthCalledWith(2, 'tool:end');
+    expect(listener).toHaveBeenNthCalledWith(1, 'tool:started');
+    expect(listener).toHaveBeenNthCalledWith(2, 'tool:ended');
   });
 
   it('should ignore duplicate registrations for the same pattern and listener', () => {
     const emitter = new EventEmitter<TestEvents>();
     const listener = vi.fn();
 
-    emitter.on('tool:start', listener);
-    emitter.on('tool:start', listener);
-    emitter.emit('tool:start', {details: {toolId: 'tool-1'}});
+    emitter.on('tool:started', listener);
+    emitter.on('tool:started', listener);
+    emitter.emit('tool:started', {details: {toolId: 'tool-1'}});
 
     expect(listener).toHaveBeenCalledTimes(1);
   });
@@ -111,15 +111,15 @@ describe('EventEmitter', () => {
     const persistentListener = vi.fn();
     const oneShotListener = vi.fn();
 
-    emitter.on('tool:start', persistentListener);
-    emitter.once('tool:start', persistentListener);
-    emitter.once('tool:end', oneShotListener);
-    emitter.on('tool:end', oneShotListener);
+    emitter.on('tool:started', persistentListener);
+    emitter.once('tool:started', persistentListener);
+    emitter.once('tool:ended', oneShotListener);
+    emitter.on('tool:ended', oneShotListener);
 
-    emitter.emit('tool:start', {details: {toolId: 'tool-1'}});
-    emitter.emit('tool:start', {details: {toolId: 'tool-1'}});
-    emitter.emit('tool:end', {details: {success: true, toolId: 'tool-1'}});
-    emitter.emit('tool:end', {details: {success: true, toolId: 'tool-1'}});
+    emitter.emit('tool:started', {details: {toolId: 'tool-1'}});
+    emitter.emit('tool:started', {details: {toolId: 'tool-1'}});
+    emitter.emit('tool:ended', {details: {success: true, toolId: 'tool-1'}});
+    emitter.emit('tool:ended', {details: {success: true, toolId: 'tool-1'}});
 
     expect(persistentListener).toHaveBeenCalledTimes(2);
     expect(oneShotListener).toHaveBeenCalledTimes(1);
@@ -129,17 +129,17 @@ describe('EventEmitter', () => {
     const emitter = new EventEmitter<TestEvents>();
     const calls: string[] = [];
 
-    emitter.on('tool:start', () => {
+    emitter.on('tool:started', () => {
       calls.push('exact:first');
     });
     emitter.on('tool:*', () => {
       calls.push('glob:second');
     });
-    emitter.on('tool:start', () => {
+    emitter.on('tool:started', () => {
       calls.push('exact:third');
     });
 
-    emitter.emit('tool:start', {details: {toolId: 'tool-1'}});
+    emitter.emit('tool:started', {details: {toolId: 'tool-1'}});
 
     expect(calls).toEqual(['exact:first', 'glob:second', 'exact:third']);
   });
@@ -150,14 +150,14 @@ describe('EventEmitter', () => {
     root.addChild(child);
     const calls: string[] = [];
 
-    root.on('tool:start', () => {
+    root.on('tool:started', () => {
       calls.push('root');
     });
-    child.on('tool:start', () => {
+    child.on('tool:started', () => {
       calls.push('child');
     });
 
-    const event = child.emit('tool:start', {details: {toolId: 'tool-1'}});
+    const event = child.emit('tool:started', {details: {toolId: 'tool-1'}});
 
     expect(calls).toEqual(['child', 'root']);
     expect(event.origin).toBe(child);
@@ -173,17 +173,17 @@ describe('EventEmitter', () => {
     middle.addChild(leaf);
     const calls: string[] = [];
 
-    root.on('tool:start', () => {
+    root.on('tool:started', () => {
       calls.push('root');
     });
-    middle.on('tool:start', () => {
+    middle.on('tool:started', () => {
       calls.push('middle');
     });
-    leaf.on('tool:start', () => {
+    leaf.on('tool:started', () => {
       calls.push('leaf');
     });
 
-    const event = leaf.emit('tool:start', {details: {toolId: 'tool-1'}});
+    const event = leaf.emit('tool:started', {details: {toolId: 'tool-1'}});
 
     expect(calls).toEqual(['leaf', 'middle', 'root']);
     expect(event.origin).toBe(leaf);
@@ -197,10 +197,10 @@ describe('EventEmitter', () => {
     const rootListener = vi.fn();
     const childListener = vi.fn();
 
-    root.on('tool:start', rootListener);
-    child.on('tool:start', childListener);
+    root.on('tool:started', rootListener);
+    child.on('tool:started', childListener);
 
-    const event = child.emit('tool:start', {
+    const event = child.emit('tool:started', {
       bubbles: false,
       details: {toolId: 'tool-1'},
     });
@@ -216,18 +216,18 @@ describe('EventEmitter', () => {
     root.addChild(child);
     const calls: string[] = [];
 
-    child.on('tool:start', (event) => {
+    child.on('tool:started', (event) => {
       calls.push('first');
       event.stopPropagation();
     });
-    child.on('tool:start', () => {
+    child.on('tool:started', () => {
       calls.push('second');
     });
-    root.on('tool:start', () => {
+    root.on('tool:started', () => {
       calls.push('root');
     });
 
-    child.emit('tool:start', {details: {toolId: 'tool-1'}});
+    child.emit('tool:started', {details: {toolId: 'tool-1'}});
 
     expect(calls).toEqual(['first', 'second']);
   });
@@ -238,18 +238,18 @@ describe('EventEmitter', () => {
     root.addChild(child);
     const calls: string[] = [];
 
-    child.on('tool:start', (event) => {
+    child.on('tool:started', (event) => {
       calls.push('first');
       event.stopImmediatePropagation();
     });
-    child.on('tool:start', () => {
+    child.on('tool:started', () => {
       calls.push('second');
     });
-    root.on('tool:start', () => {
+    root.on('tool:started', () => {
       calls.push('root');
     });
 
-    child.emit('tool:start', {details: {toolId: 'tool-1'}});
+    child.emit('tool:started', {details: {toolId: 'tool-1'}});
 
     expect(calls).toEqual(['first']);
   });
@@ -258,12 +258,12 @@ describe('EventEmitter', () => {
     const emitter = new EventEmitter<TestEvents>();
     const listener = vi.fn();
 
-    emitter.once('tool:start', () => {
+    emitter.once('tool:started', () => {
       listener();
     });
 
-    emitter.emit('tool:start', {details: {toolId: 'tool-1'}});
-    emitter.emit('tool:start', {details: {toolId: 'tool-1'}});
+    emitter.emit('tool:started', {details: {toolId: 'tool-1'}});
+    emitter.emit('tool:started', {details: {toolId: 'tool-1'}});
 
     expect(listener).toHaveBeenCalledTimes(1);
   });
@@ -271,10 +271,10 @@ describe('EventEmitter', () => {
   it('should remove listeners through the cleanup function returned by on', () => {
     const emitter = new EventEmitter<TestEvents>();
     const listener = vi.fn();
-    const cleanup = emitter.on('tool:start', listener);
+    const cleanup = emitter.on('tool:started', listener);
 
     cleanup();
-    emitter.emit('tool:start', {details: {toolId: 'tool-1'}});
+    emitter.emit('tool:started', {details: {toolId: 'tool-1'}});
 
     expect(listener).not.toHaveBeenCalled();
   });
@@ -283,9 +283,9 @@ describe('EventEmitter', () => {
     const emitter = new EventEmitter<TestEvents>();
     const listener = vi.fn();
 
-    emitter.on('tool:start', listener);
-    emitter.off('tool:start', listener);
-    emitter.emit('tool:start', {details: {toolId: 'tool-1'}});
+    emitter.on('tool:started', listener);
+    emitter.off('tool:started', listener);
+    emitter.emit('tool:started', {details: {toolId: 'tool-1'}});
 
     expect(listener).not.toHaveBeenCalled();
   });
@@ -295,13 +295,13 @@ describe('EventEmitter', () => {
     const registeredListener = vi.fn();
     const unregisteredListener = vi.fn();
 
-    emitter.on('tool:start', registeredListener);
+    emitter.on('tool:started', registeredListener);
 
     expect(() => {
-      emitter.off('tool:start', unregisteredListener);
+      emitter.off('tool:started', unregisteredListener);
     }).not.toThrow();
 
-    emitter.emit('tool:start', {details: {toolId: 'tool-1'}});
+    emitter.emit('tool:started', {details: {toolId: 'tool-1'}});
 
     expect(registeredListener).toHaveBeenCalledTimes(1);
     expect(unregisteredListener).not.toHaveBeenCalled();
@@ -313,9 +313,9 @@ describe('EventEmitter', () => {
     const rootListener = vi.fn();
     const detach = root.addChild(child);
 
-    root.on('tool:start', rootListener);
+    root.on('tool:started', rootListener);
     detach();
-    child.emit('tool:start', {details: {toolId: 'tool-1'}});
+    child.emit('tool:started', {details: {toolId: 'tool-1'}});
 
     expect(rootListener).not.toHaveBeenCalled();
   });
@@ -326,9 +326,9 @@ describe('EventEmitter', () => {
     root.addChild(child);
     const rootListener = vi.fn();
 
-    root.on('tool:start', rootListener);
+    root.on('tool:started', rootListener);
     root.removeChild(child);
-    child.emit('tool:start', {details: {toolId: 'tool-1'}});
+    child.emit('tool:started', {details: {toolId: 'tool-1'}});
 
     expect(rootListener).not.toHaveBeenCalled();
   });
@@ -340,13 +340,13 @@ describe('EventEmitter', () => {
     root.addChild(child);
     const rootListener = vi.fn();
 
-    root.on('tool:start', rootListener);
+    root.on('tool:started', rootListener);
 
     expect(() => {
       root.removeChild(unrelated);
     }).not.toThrow();
 
-    child.emit('tool:start', {details: {toolId: 'tool-1'}});
+    child.emit('tool:started', {details: {toolId: 'tool-1'}});
 
     expect(rootListener).toHaveBeenCalledTimes(1);
   });
@@ -362,9 +362,9 @@ describe('EventEmitter', () => {
     // Child events should bubble to the new parent, not the old one
     const firstListener = vi.fn();
     const secondListener = vi.fn();
-    firstParent.on('turn:end', firstListener);
-    secondParent.on('turn:end', secondListener);
-    child.emit('turn:end');
+    firstParent.on('turn:ended', firstListener);
+    secondParent.on('turn:ended', secondListener);
+    child.emit('turn:ended');
 
     expect(firstListener).not.toHaveBeenCalled();
     expect(secondListener).toHaveBeenCalledOnce();
@@ -402,7 +402,7 @@ describe('EventEmitter', () => {
         propagationStopped: false,
         stopImmediatePropagation: () => undefined,
         stopPropagation: () => undefined,
-        type: 'tool:start',
+        type: 'tool:started',
       });
     }).toThrowError(
       'emit(event) requires an Event instance created by @ai.assistant/event-emitter.',
@@ -411,7 +411,7 @@ describe('EventEmitter', () => {
 
   it('should throw when re-emitting the same event instance', () => {
     const emitter = new EventEmitter<TestEvents>();
-    const event = new Event<'tool:start', {toolId: string}>('tool:start', {
+    const event = new Event<'tool:started', {toolId: string}>('tool:started', {
       details: {toolId: 'tool-1'},
     });
 
@@ -424,12 +424,12 @@ describe('EventEmitter', () => {
 
   it('should reset emit state when a listener throws', () => {
     const emitter = new EventEmitter<TestEvents>();
-    const event = new Event<'tool:start', {toolId: string}>('tool:start', {
+    const event = new Event<'tool:started', {toolId: string}>('tool:started', {
       details: {toolId: 'tool-1'},
     });
     const cause = new Error('boom');
 
-    emitter.on('tool:start', () => {
+    emitter.on('tool:started', () => {
       throw cause;
     });
 
@@ -447,7 +447,7 @@ describe('EventEmitter', () => {
 
   it('should return the emitted event instance', () => {
     const emitter = new EventEmitter<TestEvents>();
-    const event = new Event<'tool:start', {toolId: string}>('tool:start', {
+    const event = new Event<'tool:started', {toolId: string}>('tool:started', {
       details: {toolId: 'tool-1'},
     });
 
@@ -460,7 +460,7 @@ describe('EventEmitter', () => {
     expect(() => {
       emitter.addChild({
         addChild: () => () => undefined,
-        emit: () => new Event('tool:start'),
+        emit: () => new Event('tool:started'),
         off: () => undefined,
         on: () => () => undefined,
         once: () => () => undefined,
@@ -475,16 +475,16 @@ describe('EventEmitter', () => {
     const emitter = new EventEmitter<TestEvents>();
     const calls: string[] = [];
 
-    emitter.on('tool:start', () => {
+    emitter.on('tool:started', () => {
       calls.push('first');
       throw new Error('boom');
     });
-    emitter.on('tool:start', () => {
+    emitter.on('tool:started', () => {
       calls.push('second');
     });
 
     expect(() => {
-      emitter.emit('tool:start', {details: {toolId: 'tool-1'}});
+      emitter.emit('tool:started', {details: {toolId: 'tool-1'}});
     }).toThrow('boom');
 
     expect(calls).toEqual(['first', 'second']);
@@ -496,16 +496,16 @@ describe('EventEmitter', () => {
     root.addChild(child);
     const calls: string[] = [];
 
-    child.on('tool:start', () => {
+    child.on('tool:started', () => {
       calls.push('child');
       throw new Error('boom');
     });
-    root.on('tool:start', () => {
+    root.on('tool:started', () => {
       calls.push('root');
     });
 
     expect(() => {
-      child.emit('tool:start', {details: {toolId: 'tool-1'}});
+      child.emit('tool:started', {details: {toolId: 'tool-1'}});
     }).toThrow('boom');
 
     expect(calls).toEqual(['child', 'root']);
@@ -516,15 +516,15 @@ describe('EventEmitter', () => {
     const firstError = new Error('first');
     const secondError = new Error('second');
 
-    emitter.on('tool:start', () => {
+    emitter.on('tool:started', () => {
       throw firstError;
     });
-    emitter.on('tool:start', () => {
+    emitter.on('tool:started', () => {
       throw secondError;
     });
 
     expect(() => {
-      emitter.emit('tool:start', {details: {toolId: 'tool-1'}});
+      emitter.emit('tool:started', {details: {toolId: 'tool-1'}});
     }).toThrow(firstError);
   });
 
@@ -534,14 +534,14 @@ describe('EventEmitter', () => {
       throw new Error('boom');
     });
 
-    emitter.once('tool:start', listener);
+    emitter.once('tool:started', listener);
 
     expect(() => {
-      emitter.emit('tool:start', {details: {toolId: 'tool-1'}});
+      emitter.emit('tool:started', {details: {toolId: 'tool-1'}});
     }).toThrow('boom');
 
     expect(() => {
-      emitter.emit('tool:start', {details: {toolId: 'tool-1'}});
+      emitter.emit('tool:started', {details: {toolId: 'tool-1'}});
     }).not.toThrow();
 
     expect(listener).toHaveBeenCalledTimes(1);
@@ -554,13 +554,13 @@ describe('EventEmitter', () => {
       calls.push('second');
     });
 
-    emitter.on('tool:start', () => {
+    emitter.on('tool:started', () => {
       calls.push('first');
-      emitter.off('tool:start', secondListener);
+      emitter.off('tool:started', secondListener);
     });
-    emitter.on('tool:start', secondListener);
+    emitter.on('tool:started', secondListener);
 
-    emitter.emit('tool:start', {details: {toolId: 'tool-1'}});
+    emitter.emit('tool:started', {details: {toolId: 'tool-1'}});
 
     expect(calls).toEqual(['first', 'second']);
   });
@@ -569,11 +569,11 @@ describe('EventEmitter', () => {
     const emitter = new EventEmitter<TestEvents>();
     const lateListener = vi.fn();
 
-    emitter.on('tool:start', () => {
-      emitter.on('tool:start', lateListener);
+    emitter.on('tool:started', () => {
+      emitter.on('tool:started', lateListener);
     });
 
-    emitter.emit('tool:start', {details: {toolId: 'tool-1'}});
+    emitter.emit('tool:started', {details: {toolId: 'tool-1'}});
 
     expect(lateListener).not.toHaveBeenCalled();
   });
@@ -582,27 +582,27 @@ describe('EventEmitter', () => {
     const emitter = new EventEmitter<TestEvents>();
     const calls: string[] = [];
 
-    emitter.on('tool:start', () => {
-      calls.push('tool:start:before');
-      emitter.emit('turn:end');
-      calls.push('tool:start:after');
+    emitter.on('tool:started', () => {
+      calls.push('tool:started:before');
+      emitter.emit('turn:ended');
+      calls.push('tool:started:after');
     });
-    emitter.on('turn:end', () => {
-      calls.push('turn:end');
+    emitter.on('turn:ended', () => {
+      calls.push('turn:ended');
     });
 
-    emitter.emit('tool:start', {details: {toolId: 'tool-1'}});
+    emitter.emit('tool:started', {details: {toolId: 'tool-1'}});
 
-    expect(calls).toEqual(['tool:start:before', 'turn:end', 'tool:start:after']);
+    expect(calls).toEqual(['tool:started:before', 'turn:ended', 'tool:started:after']);
   });
 
   it('should throw when re-emitting the same event instance during dispatch', () => {
     const emitter = new EventEmitter<TestEvents>();
-    const event = new Event<'tool:start', {toolId: string}>('tool:start', {
+    const event = new Event<'tool:started', {toolId: string}>('tool:started', {
       details: {toolId: 'tool-1'},
     });
 
-    emitter.on('tool:start', () => {
+    emitter.on('tool:started', () => {
       emitter.emit(event);
     });
 
@@ -614,9 +614,9 @@ describe('EventEmitter', () => {
   it('should emit silently when no listeners are registered', () => {
     const emitter = new EventEmitter<TestEvents>();
 
-    const event = emitter.emit('tool:start', {details: {toolId: 'tool-1'}});
+    const event = emitter.emit('tool:started', {details: {toolId: 'tool-1'}});
 
-    expect(event.type).toBe('tool:start');
+    expect(event.type).toBe('tool:started');
     expect(event.propagationPath()).toEqual([emitter]);
   });
 
@@ -625,7 +625,7 @@ describe('EventEmitter', () => {
     const listener = vi.fn();
 
     expect(() => {
-      emitter.off('turn:end', listener);
+      emitter.off('turn:ended', listener);
     }).not.toThrow();
   });
 
@@ -636,14 +636,14 @@ describe('EventEmitter', () => {
 
     root.addChild(child);
     const secondDetach = root.addChild(child);
-    root.on('tool:start', rootListener);
+    root.on('tool:started', rootListener);
 
-    child.emit('tool:start', {details: {toolId: 'tool-1'}});
+    child.emit('tool:started', {details: {toolId: 'tool-1'}});
 
     expect(rootListener).toHaveBeenCalledTimes(1);
 
     secondDetach();
-    child.emit('tool:start', {details: {toolId: 'tool-1'}});
+    child.emit('tool:started', {details: {toolId: 'tool-1'}});
 
     expect(rootListener).toHaveBeenCalledTimes(1);
   });
@@ -663,7 +663,7 @@ describe('EventEmitter', () => {
   it('should tolerate on cleanup functions being called multiple times', () => {
     const emitter = new EventEmitter<TestEvents>();
     const listener = vi.fn();
-    const cleanup = emitter.on('tool:start', listener);
+    const cleanup = emitter.on('tool:started', listener);
 
     cleanup();
 
@@ -671,17 +671,17 @@ describe('EventEmitter', () => {
       cleanup();
     }).not.toThrow();
 
-    emitter.emit('tool:start', {details: {toolId: 'tool-1'}});
+    emitter.emit('tool:started', {details: {toolId: 'tool-1'}});
     expect(listener).not.toHaveBeenCalled();
   });
 
   it('should remove a once listener through its cleanup function before it fires', () => {
     const emitter = new EventEmitter<TestEvents>();
     const listener = vi.fn();
-    const cleanup = emitter.once('tool:start', listener);
+    const cleanup = emitter.once('tool:started', listener);
 
     cleanup();
-    emitter.emit('tool:start', {details: {toolId: 'tool-1'}});
+    emitter.emit('tool:started', {details: {toolId: 'tool-1'}});
 
     expect(listener).not.toHaveBeenCalled();
   });
@@ -704,11 +704,11 @@ describe('EventEmitter', () => {
     const child = new EventEmitter<TestEvents>();
     parentA.addChild(child);
     const parentAListener = vi.fn();
-    parentA.on('tool:start', parentAListener);
+    parentA.on('tool:started', parentAListener);
 
     parentB.removeChild(child);
 
-    child.emit('tool:start', {details: {toolId: 'tool-1'}});
+    child.emit('tool:started', {details: {toolId: 'tool-1'}});
     expect(parentAListener).toHaveBeenCalledTimes(1);
   });
 
@@ -717,7 +717,7 @@ describe('EventEmitter', () => {
     const listener = vi.fn();
 
     emitter.on('turn:*', listener);
-    emitter.emit('tool:start', {details: {toolId: 'tool-1'}});
+    emitter.emit('tool:started', {details: {toolId: 'tool-1'}});
 
     expect(listener).not.toHaveBeenCalled();
   });
@@ -729,13 +729,13 @@ describe('EventEmitter', () => {
     emitter.on('tool:*', () => {
       calls.push('tool:*');
     });
-    emitter.on('*:start', () => {
-      calls.push('*:start');
+    emitter.on('*:started', () => {
+      calls.push('*:started');
     });
 
-    emitter.emit('tool:start', {details: {toolId: 'tool-1'}});
+    emitter.emit('tool:started', {details: {toolId: 'tool-1'}});
 
-    expect(calls).toEqual(['tool:*', '*:start']);
+    expect(calls).toEqual(['tool:*', '*:started']);
   });
 
   it('should match glob listeners on parent emitters during bubbling', () => {
@@ -745,7 +745,7 @@ describe('EventEmitter', () => {
     const listener = vi.fn();
 
     root.on('tool:*', listener);
-    child.emit('tool:start', {details: {toolId: 'tool-1'}});
+    child.emit('tool:started', {details: {toolId: 'tool-1'}});
 
     expect(listener).toHaveBeenCalledTimes(1);
   });
@@ -755,8 +755,8 @@ describe('EventEmitter', () => {
     const listener = vi.fn();
 
     emitter.once('tool:*', listener);
-    emitter.emit('tool:start', {details: {toolId: 'tool-1'}});
-    emitter.emit('tool:end', {details: {success: true, toolId: 'tool-1'}});
+    emitter.emit('tool:started', {details: {toolId: 'tool-1'}});
+    emitter.emit('tool:ended', {details: {success: true, toolId: 'tool-1'}});
 
     expect(listener).toHaveBeenCalledTimes(1);
   });
@@ -767,7 +767,7 @@ describe('EventEmitter', () => {
 
     emitter.on('tool:*', listener);
     emitter.off('tool:*', listener);
-    emitter.emit('tool:start', {details: {toolId: 'tool-1'}});
+    emitter.emit('tool:started', {details: {toolId: 'tool-1'}});
 
     expect(listener).not.toHaveBeenCalled();
   });
@@ -776,17 +776,17 @@ describe('EventEmitter', () => {
     const emitter = new EventEmitter<TestEvents>();
     const calls: string[] = [];
 
-    emitter.on('tool:start', () => {
+    emitter.on('tool:started', () => {
       calls.push('on:first');
     });
-    emitter.once('tool:start', () => {
+    emitter.once('tool:started', () => {
       calls.push('once:second');
     });
-    emitter.on('tool:start', () => {
+    emitter.on('tool:started', () => {
       calls.push('on:third');
     });
 
-    emitter.emit('tool:start', {details: {toolId: 'tool-1'}});
+    emitter.emit('tool:started', {details: {toolId: 'tool-1'}});
 
     expect(calls).toEqual(['on:first', 'once:second', 'on:third']);
   });
@@ -794,7 +794,7 @@ describe('EventEmitter', () => {
   it('should reject re-emitting a dispatched event on a different emitter', () => {
     const emitterA = new EventEmitter<TestEvents>();
     const emitterB = new EventEmitter<TestEvents>();
-    const event = new Event<'tool:start', {toolId: string}>('tool:start', {
+    const event = new Event<'tool:started', {toolId: string}>('tool:started', {
       details: {toolId: 'tool-1'},
     });
 
@@ -811,15 +811,15 @@ describe('EventEmitter', () => {
     root.addChild(child);
     const calls: string[] = [];
 
-    child.on('tool:start', () => {
+    child.on('tool:started', () => {
       calls.push('child');
       root.removeChild(child);
     });
-    root.on('tool:start', () => {
+    root.on('tool:started', () => {
       calls.push('root');
     });
 
-    child.emit('tool:start', {details: {toolId: 'tool-1'}});
+    child.emit('tool:started', {details: {toolId: 'tool-1'}});
 
     expect(calls).toEqual(['child', 'root']);
   });
@@ -830,18 +830,18 @@ describe('EventEmitter', () => {
     root.addChild(child);
     const calls: string[] = [];
 
-    child.on('tool:start', () => {
+    child.on('tool:started', () => {
       calls.push('child');
     });
-    root.on('tool:start', (event) => {
+    root.on('tool:started', (event) => {
       calls.push('root:first');
       event.stopImmediatePropagation();
     });
-    root.on('tool:start', () => {
+    root.on('tool:started', () => {
       calls.push('root:second');
     });
 
-    child.emit('tool:start', {details: {toolId: 'tool-1'}});
+    child.emit('tool:started', {details: {toolId: 'tool-1'}});
 
     expect(calls).toEqual(['child', 'root:first']);
   });

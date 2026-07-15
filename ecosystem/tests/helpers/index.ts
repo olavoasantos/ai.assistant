@@ -239,16 +239,16 @@ export function runHelpersComplianceTests(factories: HelpersComplianceTestSuite)
 
     describe('globToRegex', () => {
       it('matches exact strings without wildcards', () => {
-        const regex = globToRegex('tool:start');
-        expect(regex.test('tool:start')).toBe(true);
-        expect(regex.test('tool:end')).toBe(false);
+        const regex = globToRegex('tool:started');
+        expect(regex.test('tool:started')).toBe(true);
+        expect(regex.test('tool:ended')).toBe(false);
       });
 
       it('matches substrings via the * wildcard', () => {
         const regex = globToRegex('tool:*');
-        expect(regex.test('tool:start')).toBe(true);
-        expect(regex.test('tool:end')).toBe(true);
-        expect(regex.test('turn:start')).toBe(false);
+        expect(regex.test('tool:started')).toBe(true);
+        expect(regex.test('tool:ended')).toBe(true);
+        expect(regex.test('turn:started')).toBe(false);
       });
 
       it('escapes regex special characters literally', () => {
@@ -259,7 +259,7 @@ export function runHelpersComplianceTests(factories: HelpersComplianceTestSuite)
 
       it('anchors matches to the full string', () => {
         const regex = globToRegex('tool:*');
-        expect(regex.test('prefix tool:start suffix')).toBe(false);
+        expect(regex.test('prefix tool:started suffix')).toBe(false);
       });
 
       it('caches compiled regexes for the same glob', () => {

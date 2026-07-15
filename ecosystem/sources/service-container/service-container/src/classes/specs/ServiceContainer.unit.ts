@@ -438,8 +438,8 @@ describe('ServiceContainer', () => {
       const child = container.fork();
       const listener = vi.fn();
 
-      (container as any).on('test:event', listener);
-      (child as any).emit('test:event');
+      (container as any).on('test:emitted', listener);
+      (child as any).emit('test:emitted');
 
       expect(listener).toHaveBeenCalled();
     });
@@ -729,27 +729,27 @@ describe('ServiceContainer', () => {
       const child = parent.fork();
       const listener = vi.fn();
 
-      (parent as any).on('test', listener);
+      (parent as any).on('test:emitted', listener);
 
       // Before dispose: child events bubble to parent
-      (child as any).emit('test');
+      (child as any).emit('test:emitted');
       expect(listener).toHaveBeenCalledTimes(1);
 
       await child.dispose();
 
       // After dispose: child is detached, parent can't be reached
       // Any call on disposed child throws
-      expect(() => (child as any).emit('test')).toThrow(/disposed/);
+      expect(() => (child as any).emit('test:emitted')).toThrow(/disposed/);
     });
 
     it('inherited event methods throw after dispose', async () => {
       const container = new ServiceContainer<TestServices>();
       await container.dispose();
 
-      expect(() => (container as any).on('test', () => {})).toThrow(/disposed/);
-      expect(() => (container as any).once('test', () => {})).toThrow(/disposed/);
-      expect(() => (container as any).off('test', () => {})).toThrow(/disposed/);
-      expect(() => (container as any).emit('test')).toThrow(/disposed/);
+      expect(() => (container as any).on('test:emitted', () => {})).toThrow(/disposed/);
+      expect(() => (container as any).once('test:emitted', () => {})).toThrow(/disposed/);
+      expect(() => (container as any).off('test:emitted', () => {})).toThrow(/disposed/);
+      expect(() => (container as any).emit('test:emitted')).toThrow(/disposed/);
       expect(() => container.addChild(new ServiceContainer())).toThrow(/disposed/);
       expect(() => container.removeChild(new ServiceContainer())).toThrow(/disposed/);
     });

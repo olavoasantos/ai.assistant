@@ -38,7 +38,7 @@ describe('Telemetry', () => {
 
     it('should record a timer entry with status ok on stop()', () => {
       const telemetry = new Telemetry({namespace: 'app'});
-      const entries = collectEntries(telemetry, 'telemetry:app.dbQuery');
+      const entries = collectEntries(telemetry, 'telemetry:app.dbQuery.recorded');
 
       const handle = telemetry.startTimer('dbQuery');
       handle.stop();
@@ -56,7 +56,7 @@ describe('Telemetry', () => {
 
     it('should record a timer entry with status error on fail()', () => {
       const telemetry = new Telemetry({namespace: 'app'});
-      const entries = collectEntries(telemetry, 'telemetry:app.dbQuery');
+      const entries = collectEntries(telemetry, 'telemetry:app.dbQuery.recorded');
       const reason = new Error('connection timeout');
 
       const handle = telemetry.startTimer('dbQuery');
@@ -73,7 +73,7 @@ describe('Telemetry', () => {
 
     it('should record a timer entry without reason on fail() with no argument', () => {
       const telemetry = new Telemetry({namespace: 'app'});
-      const entries = collectEntries(telemetry, 'telemetry:app.dbQuery');
+      const entries = collectEntries(telemetry, 'telemetry:app.dbQuery.recorded');
 
       const handle = telemetry.startTimer('dbQuery');
       handle.fail();
@@ -87,7 +87,7 @@ describe('Telemetry', () => {
 
     it('should record nothing when cancel() is called', () => {
       const telemetry = new Telemetry({namespace: 'app'});
-      const entries = collectEntries(telemetry, 'telemetry:app.dbQuery');
+      const entries = collectEntries(telemetry, 'telemetry:app.dbQuery.recorded');
 
       const handle = telemetry.startTimer('dbQuery');
       handle.cancel();
@@ -127,7 +127,7 @@ describe('Telemetry', () => {
 
     it('should track overlapping timers with the same name independently', () => {
       const telemetry = new Telemetry({namespace: 'app'});
-      const entries = collectEntries(telemetry, 'telemetry:app.query');
+      const entries = collectEntries(telemetry, 'telemetry:app.query.recorded');
 
       const timer1 = telemetry.startTimer('query');
       const timer2 = telemetry.startTimer('query');
@@ -167,7 +167,7 @@ describe('Telemetry', () => {
 
     it('should allow updating tags via set() before completion', () => {
       const telemetry = new Telemetry({namespace: 'app'});
-      const entries = collectEntries(telemetry, 'telemetry:app.query');
+      const entries = collectEntries(telemetry, 'telemetry:app.query.recorded');
 
       const handle = telemetry.startTimer('query');
       handle.set('tags', {method: 'GET'});
@@ -194,7 +194,7 @@ describe('Telemetry', () => {
 
     it('should create a timer handle from mark.measure()', () => {
       const telemetry = new Telemetry({namespace: 'app'});
-      const entries = collectEntries(telemetry, 'telemetry:app.operation');
+      const entries = collectEntries(telemetry, 'telemetry:app.operation.recorded');
 
       const mark = telemetry.mark('start');
       const handle = mark.measure('operation');
@@ -250,7 +250,7 @@ describe('Telemetry', () => {
 
     it('should inherit mark tags in measurements', () => {
       const telemetry = new Telemetry({namespace: 'app'});
-      const entries = collectEntries(telemetry, 'telemetry:app.operation');
+      const entries = collectEntries(telemetry, 'telemetry:app.operation.recorded');
 
       const mark = telemetry.mark('start', {tags: {phase: 'init'}});
       const handle = mark.measure('operation');
@@ -264,7 +264,7 @@ describe('Telemetry', () => {
 
     it('should allow updating mark tags via set()', () => {
       const telemetry = new Telemetry({namespace: 'app'});
-      const entries = collectEntries(telemetry, 'telemetry:app.operation');
+      const entries = collectEntries(telemetry, 'telemetry:app.operation.recorded');
 
       const mark = telemetry.mark('start');
       mark.set('tags', {phase: 'loaded'});
@@ -348,7 +348,7 @@ describe('Telemetry', () => {
 
     it('should record a success timer from a sync callback', () => {
       const telemetry = new Telemetry({namespace: 'app'});
-      const entries = collectEntries(telemetry, 'telemetry:app.compute');
+      const entries = collectEntries(telemetry, 'telemetry:app.compute.recorded');
 
       telemetry.measureCallback('compute', () => 'done');
       telemetry.flush();
@@ -361,7 +361,7 @@ describe('Telemetry', () => {
 
     it('should record a failure timer and re-throw from a sync callback', () => {
       const telemetry = new Telemetry({namespace: 'app'});
-      const entries = collectEntries(telemetry, 'telemetry:app.compute');
+      const entries = collectEntries(telemetry, 'telemetry:app.compute.recorded');
       const error = new Error('boom');
 
       expect(() => {
@@ -388,7 +388,7 @@ describe('Telemetry', () => {
 
     it('should record a success timer from an async callback', async () => {
       const telemetry = new Telemetry({namespace: 'app'});
-      const entries = collectEntries(telemetry, 'telemetry:app.fetch');
+      const entries = collectEntries(telemetry, 'telemetry:app.fetch.recorded');
 
       await telemetry.measureCallback('fetch', async () => 'data');
       telemetry.flush();
@@ -401,7 +401,7 @@ describe('Telemetry', () => {
 
     it('should record a failure timer and re-throw from an async callback', async () => {
       const telemetry = new Telemetry({namespace: 'app'});
-      const entries = collectEntries(telemetry, 'telemetry:app.fetch');
+      const entries = collectEntries(telemetry, 'telemetry:app.fetch.recorded');
       const error = new Error('network failure');
 
       await expect(
@@ -422,7 +422,7 @@ describe('Telemetry', () => {
   describe('Value metrics', () => {
     it('should record individual value entries', () => {
       const telemetry = new Telemetry({namespace: 'app'});
-      const entries = collectEntries(telemetry, 'telemetry:app.snapshot');
+      const entries = collectEntries(telemetry, 'telemetry:app.snapshot.recorded');
 
       telemetry.record('snapshot', {cpu: 0.5, mem: 1024});
       telemetry.flush();
@@ -438,7 +438,7 @@ describe('Telemetry', () => {
 
     it('should record any type of value', () => {
       const telemetry = new Telemetry({namespace: 'app'});
-      const entries = collectEntries(telemetry, 'telemetry:app.data');
+      const entries = collectEntries(telemetry, 'telemetry:app.data.recorded');
 
       telemetry.record('data', 'string-value');
       telemetry.record('data', 42);
@@ -455,7 +455,7 @@ describe('Telemetry', () => {
 
     it('should record with error status and reason', () => {
       const telemetry = new Telemetry({namespace: 'app'});
-      const entries = collectEntries(telemetry, 'telemetry:app.config');
+      const entries = collectEntries(telemetry, 'telemetry:app.config.recorded');
       const err = new Error('parse failed');
 
       telemetry.record('config', null, {status: 'error', reason: err});
@@ -528,7 +528,7 @@ describe('Telemetry', () => {
     it('should inherit parent tags in forked instance', () => {
       const parent = new Telemetry({namespace: 'app', tags: {env: 'prod'}});
       const child = parent.fork('http');
-      const entries = collectEntries(child, 'telemetry:app.http.requests');
+      const entries = collectEntries(child, 'telemetry:app.http.requests.recorded');
 
       child.record('requests', 1);
       child.flush();
@@ -539,7 +539,7 @@ describe('Telemetry', () => {
     it('should merge fork tags with parent tags, fork overrides on collision', () => {
       const parent = new Telemetry({namespace: 'app', tags: {env: 'prod', version: '1'}});
       const child = parent.fork('http', {tags: {env: 'staging', region: 'us'}});
-      const entries = collectEntries(child, 'telemetry:app.http.requests');
+      const entries = collectEntries(child, 'telemetry:app.http.requests.recorded');
 
       child.record('requests', 1);
       child.flush();
@@ -550,7 +550,7 @@ describe('Telemetry', () => {
     it('should merge per-call tags with instance and parent tags', () => {
       const parent = new Telemetry({namespace: 'app', tags: {env: 'prod'}});
       const child = parent.fork('http', {tags: {layer: 'transport'}});
-      const entries = collectEntries(child, 'telemetry:app.http.requests');
+      const entries = collectEntries(child, 'telemetry:app.http.requests.recorded');
 
       child.record('requests', 1, {tags: {method: 'GET'}});
       child.flush();
@@ -562,7 +562,7 @@ describe('Telemetry', () => {
       const root = new Telemetry({namespace: 'app', tags: {env: 'prod'}});
       const mid = root.fork('session', {tags: {sid: '123'}});
       const leaf = mid.fork('agent', {tags: {agent: 'codegen'}});
-      const entries = collectEntries(leaf, 'telemetry:app.session.agent.requests');
+      const entries = collectEntries(leaf, 'telemetry:app.session.agent.requests.recorded');
 
       leaf.record('requests', 1);
       leaf.flush();
@@ -583,8 +583,8 @@ describe('Telemetry', () => {
       telemetry.record('memory', 512);
       telemetry.flush();
 
-      expect(eventTypes).toContain('telemetry:app.requests');
-      expect(eventTypes).toContain('telemetry:app.memory');
+      expect(eventTypes).toContain('telemetry:app.requests.recorded');
+      expect(eventTypes).toContain('telemetry:app.memory.recorded');
     });
 
     it('should cascade flush depth-first (children flush before parent)', () => {
@@ -603,8 +603,12 @@ describe('Telemetry', () => {
       parent.record('parentMetric', 1);
       parent.flush();
 
-      const childIndex = order.findIndex((e) => e === 'child:telemetry:parent.child.childMetric');
-      const parentIndex = order.findIndex((e) => e === 'parent:telemetry:parent.parentMetric');
+      const childIndex = order.findIndex(
+        (e) => e === 'child:telemetry:parent.child.childMetric.recorded',
+      );
+      const parentIndex = order.findIndex(
+        (e) => e === 'parent:telemetry:parent.parentMetric.recorded',
+      );
       expect(childIndex).toBeLessThan(parentIndex);
     });
 
@@ -628,7 +632,7 @@ describe('Telemetry', () => {
       const telemetry = new Telemetry({namespace: 'app'});
       let flushCallCount = 0;
 
-      telemetry.on('telemetry:app.trigger', () => {
+      telemetry.on('telemetry:app.trigger.recorded', () => {
         flushCallCount++;
         telemetry.flush();
       });
@@ -662,7 +666,7 @@ describe('Telemetry', () => {
       const telemetry = new Telemetry({namespace: 'app'});
       const entries: TelemetryEntry[] = [];
 
-      telemetry.on('telemetry:app.trigger', () => {
+      telemetry.on('telemetry:app.trigger.recorded', () => {
         telemetry.record('deferred', 'queued-during-flush');
       });
       telemetry.on('*', (event) => {
@@ -929,7 +933,7 @@ describe('Telemetry', () => {
       const source = {name: 'MyService'};
       const parent = new Telemetry({namespace: 'app', source});
       const child = parent.fork('http');
-      const entries = collectEntries(child, 'telemetry:app.http.requests');
+      const entries = collectEntries(child, 'telemetry:app.http.requests.recorded');
 
       child.record('requests', 1);
       child.flush();
@@ -942,7 +946,7 @@ describe('Telemetry', () => {
       const childSource = {name: 'Child'};
       const parent = new Telemetry({namespace: 'app', source: parentSource});
       const child = parent.fork('http', {source: childSource});
-      const entries = collectEntries(child, 'telemetry:app.http.requests');
+      const entries = collectEntries(child, 'telemetry:app.http.requests.recorded');
 
       child.record('requests', 1);
       child.flush();
@@ -1104,7 +1108,7 @@ describe('Telemetry', () => {
 
       parent.addChild(child);
 
-      const entries = collectEntries(child, 'telemetry:child.requests');
+      const entries = collectEntries(child, 'telemetry:child.requests.recorded');
       child.record('requests', 1);
       child.flush();
 
@@ -1118,7 +1122,7 @@ describe('Telemetry', () => {
       const leaf = mid.fork('leaf');
 
       // Prime the grandchild — read its resolved tags
-      const beforeEntries = collectEntries(leaf, 'telemetry:root.mid.leaf.before');
+      const beforeEntries = collectEntries(leaf, 'telemetry:root.mid.leaf.before.recorded');
       leaf.record('before', 1);
       leaf.flush();
       expect(beforeEntries[0].tags).toEqual({env: 'prod'});
@@ -1127,7 +1131,7 @@ describe('Telemetry', () => {
       root.removeChild(mid);
 
       // Grandchild should no longer inherit root tags
-      const afterEntries = collectEntries(leaf, 'telemetry:root.mid.leaf.after');
+      const afterEntries = collectEntries(leaf, 'telemetry:root.mid.leaf.after.recorded');
       leaf.record('after', 1);
       leaf.flush();
       expect(afterEntries[0].tags).toEqual({});
@@ -1139,7 +1143,7 @@ describe('Telemetry', () => {
       const leaf = mid.fork('leaf');
 
       // Prime the grandchild
-      const beforeEntries = collectEntries(leaf, 'telemetry:root.mid.leaf.before');
+      const beforeEntries = collectEntries(leaf, 'telemetry:root.mid.leaf.before.recorded');
       leaf.record('before', 1);
       leaf.flush();
       expect(beforeEntries[0].tags).toEqual({env: 'prod', layer: 'mid'});
@@ -1148,7 +1152,7 @@ describe('Telemetry', () => {
       root.dispose();
 
       // Grandchild should only have mid's own tags
-      const afterEntries = collectEntries(leaf, 'telemetry:root.mid.leaf.after');
+      const afterEntries = collectEntries(leaf, 'telemetry:root.mid.leaf.after.recorded');
       leaf.record('after', 1);
       leaf.flush();
       expect(afterEntries[0].tags).toEqual({layer: 'mid'});
@@ -1162,7 +1166,7 @@ describe('Telemetry', () => {
       const d = c.fork('d');
 
       // Prime all descendants
-      const entries = collectEntries(d, 'telemetry:root.a.b.c.d.check');
+      const entries = collectEntries(d, 'telemetry:root.a.b.c.d.check.recorded');
       d.record('check', 1);
       d.flush();
       expect(entries[0].tags).toEqual({env: 'prod'});
@@ -1170,7 +1174,7 @@ describe('Telemetry', () => {
       // Remove a from root — all descendants should lose root tags
       root.removeChild(a);
 
-      const afterEntries = collectEntries(d, 'telemetry:root.a.b.c.d.after');
+      const afterEntries = collectEntries(d, 'telemetry:root.a.b.c.d.after.recorded');
       d.record('after', 1);
       d.flush();
       expect(afterEntries[0].tags).toEqual({});
@@ -1234,11 +1238,11 @@ describe('Telemetry', () => {
       const telemetry = new Telemetry({namespace: 'app'});
       const received: string[] = [];
 
-      telemetry.on('telemetry:app.first', () => {
+      telemetry.on('telemetry:app.first.recorded', () => {
         received.push('first');
         throw new Error('listener failure');
       });
-      telemetry.on('telemetry:app.second', () => {
+      telemetry.on('telemetry:app.second.recorded', () => {
         received.push('second');
       });
 
@@ -1254,7 +1258,7 @@ describe('Telemetry', () => {
     it('should not lose entries when flush throws', () => {
       const telemetry = new Telemetry({namespace: 'app'});
 
-      telemetry.on('telemetry:app.boom', () => {
+      telemetry.on('telemetry:app.boom.recorded', () => {
         throw new Error('boom');
       });
 

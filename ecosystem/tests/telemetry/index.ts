@@ -52,7 +52,7 @@ export function runTelemetryComplianceTests(factories: TelemetryComplianceTestSu
 
       it('records a timer entry with status ok on stop', () => {
         const telemetry = createTelemetry({namespace: 'app'});
-        const entries = collectEntries(telemetry, 'telemetry:app.operation');
+        const entries = collectEntries(telemetry, 'telemetry:app.operation.recorded');
 
         const handle = telemetry.startTimer('operation');
         handle.stop();
@@ -69,7 +69,7 @@ export function runTelemetryComplianceTests(factories: TelemetryComplianceTestSu
 
       it('records a timer entry with status error and reason on fail', () => {
         const telemetry = createTelemetry({namespace: 'app'});
-        const entries = collectEntries(telemetry, 'telemetry:app.operation');
+        const entries = collectEntries(telemetry, 'telemetry:app.operation.recorded');
         const reason = new Error('timeout');
 
         const handle = telemetry.startTimer('operation');
@@ -84,7 +84,7 @@ export function runTelemetryComplianceTests(factories: TelemetryComplianceTestSu
 
       it('records nothing on cancel', () => {
         const telemetry = createTelemetry({namespace: 'app'});
-        const entries = collectEntries(telemetry, 'telemetry:app.operation');
+        const entries = collectEntries(telemetry, 'telemetry:app.operation.recorded');
 
         telemetry.startTimer('operation').cancel();
         telemetry.flush();
@@ -103,7 +103,7 @@ export function runTelemetryComplianceTests(factories: TelemetryComplianceTestSu
 
       it('tracks overlapping timers with the same name independently', () => {
         const telemetry = createTelemetry({namespace: 'app'});
-        const entries = collectEntries(telemetry, 'telemetry:app.query');
+        const entries = collectEntries(telemetry, 'telemetry:app.query.recorded');
 
         const timer1 = telemetry.startTimer('query');
         const timer2 = telemetry.startTimer('query');
@@ -117,7 +117,7 @@ export function runTelemetryComplianceTests(factories: TelemetryComplianceTestSu
 
       it('allows updating tags via set before completion', () => {
         const telemetry = createTelemetry({namespace: 'app'});
-        const entries = collectEntries(telemetry, 'telemetry:app.query');
+        const entries = collectEntries(telemetry, 'telemetry:app.query.recorded');
 
         const handle = telemetry.startTimer('query');
         handle.set('tags', {method: 'GET'});
@@ -220,7 +220,7 @@ export function runTelemetryComplianceTests(factories: TelemetryComplianceTestSu
 
       it('records a success timer from a sync callback', () => {
         const telemetry = createTelemetry({namespace: 'app'});
-        const entries = collectEntries(telemetry, 'telemetry:app.compute');
+        const entries = collectEntries(telemetry, 'telemetry:app.compute.recorded');
 
         telemetry.measureCallback('compute', () => 'done');
         telemetry.flush();
@@ -231,7 +231,7 @@ export function runTelemetryComplianceTests(factories: TelemetryComplianceTestSu
 
       it('records a failure timer and re-throws from a sync callback', () => {
         const telemetry = createTelemetry({namespace: 'app'});
-        const entries = collectEntries(telemetry, 'telemetry:app.compute');
+        const entries = collectEntries(telemetry, 'telemetry:app.compute.recorded');
         const error = new Error('boom');
 
         expect(() => {
@@ -250,7 +250,7 @@ export function runTelemetryComplianceTests(factories: TelemetryComplianceTestSu
 
       it('records a success timer from an async callback', async () => {
         const telemetry = createTelemetry({namespace: 'app'});
-        const entries = collectEntries(telemetry, 'telemetry:app.fetch');
+        const entries = collectEntries(telemetry, 'telemetry:app.fetch.recorded');
 
         await telemetry.measureCallback('fetch', async () => 'data');
         telemetry.flush();
@@ -263,7 +263,7 @@ export function runTelemetryComplianceTests(factories: TelemetryComplianceTestSu
     describe('value metrics', () => {
       it('records a value entry with status ok by default', () => {
         const telemetry = createTelemetry({namespace: 'app'});
-        const entries = collectEntries(telemetry, 'telemetry:app.snapshot');
+        const entries = collectEntries(telemetry, 'telemetry:app.snapshot.recorded');
 
         telemetry.record('snapshot', {cpu: 0.5});
         telemetry.flush();
@@ -278,7 +278,7 @@ export function runTelemetryComplianceTests(factories: TelemetryComplianceTestSu
 
       it('records with error status and reason via options', () => {
         const telemetry = createTelemetry({namespace: 'app'});
-        const entries = collectEntries(telemetry, 'telemetry:app.config');
+        const entries = collectEntries(telemetry, 'telemetry:app.config.recorded');
         const reason = new Error('parse failed');
 
         telemetry.record('config', null, {status: 'error', reason});
@@ -338,7 +338,7 @@ export function runTelemetryComplianceTests(factories: TelemetryComplianceTestSu
       it('inherits parent tags in a forked instance', () => {
         const parent = createTelemetry({namespace: 'app', tags: {env: 'prod'}});
         const child = parent.fork('http');
-        const entries = collectEntries(child, 'telemetry:app.http.requests');
+        const entries = collectEntries(child, 'telemetry:app.http.requests.recorded');
 
         child.record('requests', 1);
         child.flush();
@@ -349,7 +349,7 @@ export function runTelemetryComplianceTests(factories: TelemetryComplianceTestSu
       it('merges fork tags with parent tags, fork overrides on collision', () => {
         const parent = createTelemetry({namespace: 'app', tags: {env: 'prod', version: '1'}});
         const child = parent.fork('http', {tags: {env: 'staging', region: 'us'}});
-        const entries = collectEntries(child, 'telemetry:app.http.requests');
+        const entries = collectEntries(child, 'telemetry:app.http.requests.recorded');
 
         child.record('requests', 1);
         child.flush();
@@ -360,7 +360,7 @@ export function runTelemetryComplianceTests(factories: TelemetryComplianceTestSu
       it('merges per-call tags with instance and parent tags', () => {
         const parent = createTelemetry({namespace: 'app', tags: {env: 'prod'}});
         const child = parent.fork('http', {tags: {layer: 'transport'}});
-        const entries = collectEntries(child, 'telemetry:app.http.requests');
+        const entries = collectEntries(child, 'telemetry:app.http.requests.recorded');
 
         child.record('requests', 1, {tags: {method: 'GET'}});
         child.flush();
@@ -381,8 +381,8 @@ export function runTelemetryComplianceTests(factories: TelemetryComplianceTestSu
         telemetry.record('memory', 512);
         telemetry.flush();
 
-        expect(eventTypes).toContain('telemetry:app.requests');
-        expect(eventTypes).toContain('telemetry:app.memory');
+        expect(eventTypes).toContain('telemetry:app.requests.recorded');
+        expect(eventTypes).toContain('telemetry:app.memory.recorded');
       });
 
       it('cascades flush depth-first (children flush before parent)', () => {
@@ -401,8 +401,12 @@ export function runTelemetryComplianceTests(factories: TelemetryComplianceTestSu
         parent.record('parentMetric', 1);
         parent.flush();
 
-        const childIndex = order.findIndex((e) => e === 'child:telemetry:parent.child.childMetric');
-        const parentIndex = order.findIndex((e) => e === 'parent:telemetry:parent.parentMetric');
+        const childIndex = order.findIndex(
+          (e) => e === 'child:telemetry:parent.child.childMetric.recorded',
+        );
+        const parentIndex = order.findIndex(
+          (e) => e === 'parent:telemetry:parent.parentMetric.recorded',
+        );
         expect(childIndex).toBeLessThan(parentIndex);
       });
 
@@ -426,7 +430,7 @@ export function runTelemetryComplianceTests(factories: TelemetryComplianceTestSu
         const telemetry = createTelemetry({namespace: 'app'});
         let flushCallCount = 0;
 
-        telemetry.on('telemetry:app.trigger', () => {
+        telemetry.on('telemetry:app.trigger.recorded', () => {
           flushCallCount++;
           telemetry.flush();
         });
@@ -441,7 +445,7 @@ export function runTelemetryComplianceTests(factories: TelemetryComplianceTestSu
         const telemetry = createTelemetry({namespace: 'app'});
         const entries: Contract.TelemetryEntry[] = [];
 
-        telemetry.on('telemetry:app.trigger', () => {
+        telemetry.on('telemetry:app.trigger.recorded', () => {
           telemetry.record('deferred', 'queued-during-flush');
         });
         telemetry.on('*', (event) => {
@@ -610,7 +614,7 @@ export function runTelemetryComplianceTests(factories: TelemetryComplianceTestSu
         const source = {name: 'Service'};
         const parent = createTelemetry({namespace: 'app', source});
         const child = parent.fork('http');
-        const entries = collectEntries(child, 'telemetry:app.http.requests');
+        const entries = collectEntries(child, 'telemetry:app.http.requests.recorded');
 
         child.record('requests', 1);
         child.flush();
@@ -621,7 +625,7 @@ export function runTelemetryComplianceTests(factories: TelemetryComplianceTestSu
       it('overrides parent source with explicit fork source', () => {
         const parent = createTelemetry({namespace: 'app', source: {name: 'Parent'}});
         const child = parent.fork('http', {source: {name: 'Child'}});
-        const entries = collectEntries(child, 'telemetry:app.http.requests');
+        const entries = collectEntries(child, 'telemetry:app.http.requests.recorded');
 
         child.record('requests', 1);
         child.flush();

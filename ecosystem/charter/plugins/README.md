@@ -85,7 +85,7 @@ The orchestration engine. Manages a set of PluginRunners and exposes strategy me
 
 - If a hook handler throws and no error handler is configured for that hook, the error is fatal — it halts execution of remaining handlers in the current strategy invocation.
 - If an error handler is configured, it receives the error and returns an `ErrorSeverity`: `'recoverable'` or `'fatal'`.
-- `'recoverable'` — the error is emitted as a `plugin:hook.error` event and swallowed. The trigger returns `undefined`. Execution continues with the next handler.
+- `'recoverable'` — the error is emitted as a `plugin:hook.errored` event and swallowed. The trigger returns `undefined`. Execution continues with the next handler.
 - `'fatal'` — execution halts immediately. The error is re-thrown with `severity: 'fatal'` metadata. Remaining handlers are skipped.
 - Error handling is fully owned by the PluginRunner. The container does not apply additional error policy — it simply lets fatal throws propagate.
 

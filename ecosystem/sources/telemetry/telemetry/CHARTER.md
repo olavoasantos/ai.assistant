@@ -39,6 +39,10 @@ Provide the default environment-agnostic implementation of the telemetry contrac
 
 - Default tags are live-linked through the fork chain via `@preact/signals-core` signals: a parent's tag changes propagate to all descendants automatically through a computed signal chain.
 
+### Event Emission
+
+- Flushing emits each entry as `telemetry:{fullyQualifiedMetric}.recorded` so telemetry events follow the platform's past-tense occurrence convention while preserving metric-specific glob filtering.
+
 ## Constraints
 
 - Zero external runtime dependencies beyond other foundations (`@ai.assistant/error`, `@ai.assistant/event-emitter`, `@ai.assistant/helpers`, `@ai.assistant/validation`) and the platform's reactive primitive (`@preact/signals-core`).

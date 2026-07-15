@@ -313,7 +313,7 @@ export class PluginRunner<
       try {
         const severity = hook.errorHandler(thrown, ...args);
         if (severity === 'recoverable') {
-          this.emit('plugin:hook.error', {
+          this.emit('plugin:hook.errored', {
             details: {plugin: this.name, hook: hookName, error: thrown},
           });
           return undefined;

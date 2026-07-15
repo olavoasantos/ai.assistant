@@ -338,7 +338,7 @@ describe('PluginRunner', () => {
       expect(() => runner.triggerSync({hook: 'boot', args: [{name: 'test'}]})).toThrow('sync boom');
     });
 
-    it('emits plugin:hook.error for recoverable errors', async () => {
+    it('emits plugin:hook.errored for recoverable errors', async () => {
       const listener = vi.fn();
       const runner = new PluginRunner<TestHooks>(
         {
@@ -352,7 +352,7 @@ describe('PluginRunner', () => {
         },
         {telemetry},
       );
-      runner.on('plugin:hook.error', listener);
+      runner.on('plugin:hook.errored', listener);
 
       const result = await runner.trigger({hook: 'boot', args: [{name: 'test'}]});
 
@@ -513,7 +513,7 @@ describe('PluginRunner', () => {
         {telemetry},
       );
       const parentListener = vi.fn();
-      runner.on('plugin:hook.error', parentListener);
+      runner.on('plugin:hook.errored', parentListener);
 
       const child = runner.fork();
       child.triggerSync({hook: 'boot', args: [{name: 'test'}]});

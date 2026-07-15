@@ -8,10 +8,10 @@ import type * as Contract from '@ai.assistant/contracts/events';
  * factory functions whose return types are checked against it by the suite.
  */
 export interface ComplianceEventMap {
-  'action:start': {actorId: string};
-  'action:end': {actorId: string; success: boolean};
-  tick: undefined;
-  status: string | undefined;
+  'action:started': {actorId: string};
+  'action:ended': {actorId: string; success: boolean};
+  'clock:ticked': undefined;
+  'status:changed': string | undefined;
 }
 
 /**
@@ -49,16 +49,16 @@ export function runEventComplianceTests(factories: EventComplianceTestSuite): vo
         const emitter = createEmitter();
         const listener = vi.fn();
 
-        emitter.on('action:start', (event) => {
-          expectTypeOf(event.type).toEqualTypeOf<'action:start'>();
+        emitter.on('action:started', (event) => {
+          expectTypeOf(event.type).toEqualTypeOf<'action:started'>();
           expectTypeOf(event.details).toEqualTypeOf<{actorId: string}>();
           listener(event.details.actorId);
         });
 
-        const event = emitter.emit('action:start', {details: {actorId: 'a-1'}});
+        const event = emitter.emit('action:started', {details: {actorId: 'a-1'}});
 
         expect(listener).toHaveBeenCalledWith('a-1');
-        expect(event.type).toBe('action:start');
+        expect(event.type).toBe('action:started');
         expect(event.details).toEqual({actorId: 'a-1'});
         expect(event.origin).toBe(emitter);
         expect(event.currentEmitter).toBeNull();
@@ -68,9 +68,9 @@ export function runEventComplianceTests(factories: EventComplianceTestSuite): vo
       it('emits silently when no listeners are registered', () => {
         const emitter = createEmitter();
 
-        const event = emitter.emit('action:start', {details: {actorId: 'a-1'}});
+        const event = emitter.emit('action:started', {details: {actorId: 'a-1'}});
 
-        expect(event.type).toBe('action:start');
+        expect(event.type).toBe('action:started');
         expect(event.propagationPath()).toEqual([emitter]);
       });
 
@@ -78,12 +78,12 @@ export function runEventComplianceTests(factories: EventComplianceTestSuite): vo
         const emitter = createEmitter();
         const listener = vi.fn();
 
-        emitter.on('tick', (event) => {
+        emitter.on('clock:ticked', (event) => {
           expectTypeOf(event.details).toEqualTypeOf<undefined>();
           listener(event.details);
         });
 
-        const event = emitter.emit('tick');
+        const event = emitter.emit('clock:ticked');
 
         expect(listener).toHaveBeenCalledWith(undefined);
         expect(event.details).toBeUndefined();
@@ -93,16 +93,16 @@ export function runEventComplianceTests(factories: EventComplianceTestSuite): vo
         const emitter = createEmitter();
 
         // @ts-expect-error union payloads still require explicit emit options
-        const invalidEmit = () => emitter.emit('status');
+        const invalidEmit = () => emitter.emit('status:changed');
 
         expectTypeOf(invalidEmit).toEqualTypeOf<
-          () => Contract.Event<'status', string | undefined>
+          () => Contract.Event<'status:changed', string | undefined>
         >();
       });
 
       it('marks an event as dispatched so it cannot be re-emitted', () => {
         const emitter = createEmitter();
-        const event = createEvent('action:start', {details: {actorId: 'a-1'}});
+        const event = createEvent('action:started', {details: {actorId: 'a-1'}});
 
         emitter.emit(event);
 
@@ -114,7 +114,7 @@ export function runEventComplianceTests(factories: EventComplianceTestSuite): vo
       it('rejects re-emitting a dispatched event on a different emitter', () => {
         const first = createEmitter();
         const second = createEmitter();
-        const event = createEvent('action:start', {details: {actorId: 'a-1'}});
+        const event = createEvent('action:started', {details: {actorId: 'a-1'}});
 
         first.emit(event);
 
@@ -125,15 +125,15 @@ export function runEventComplianceTests(factories: EventComplianceTestSuite): vo
 
       it('resets dispatch state and re-throws the first error when a listener throws', () => {
         const emitter = createEmitter();
-        const event = createEvent('action:start', {details: {actorId: 'a-1'}});
+        const event = createEvent('action:started', {details: {actorId: 'a-1'}});
         const cause = new Error('boom');
         const calls: string[] = [];
 
-        emitter.on('action:start', () => {
+        emitter.on('action:started', () => {
           calls.push('first');
           throw cause;
         });
-        emitter.on('action:start', () => {
+        emitter.on('action:started', () => {
           calls.push('second');
         });
 
@@ -155,10 +155,10 @@ export function runEventComplianceTests(factories: EventComplianceTestSuite): vo
       it('removes listeners through the cleanup function returned by on', () => {
         const emitter = createEmitter();
         const listener = vi.fn();
-        const cleanup = emitter.on('action:start', listener);
+        const cleanup = emitter.on('action:started', listener);
 
         cleanup();
-        emitter.emit('action:start', {details: {actorId: 'a-1'}});
+        emitter.emit('action:started', {details: {actorId: 'a-1'}});
 
         expect(listener).not.toHaveBeenCalled();
       });
@@ -166,12 +166,12 @@ export function runEventComplianceTests(factories: EventComplianceTestSuite): vo
       it('tolerates cleanup functions being called multiple times', () => {
         const emitter = createEmitter();
         const listener = vi.fn();
-        const cleanup = emitter.on('action:start', listener);
+        const cleanup = emitter.on('action:started', listener);
 
         cleanup();
         expect(() => cleanup()).not.toThrow();
 
-        emitter.emit('action:start', {details: {actorId: 'a-1'}});
+        emitter.emit('action:started', {details: {actorId: 'a-1'}});
         expect(listener).not.toHaveBeenCalled();
       });
 
@@ -180,13 +180,13 @@ export function runEventComplianceTests(factories: EventComplianceTestSuite): vo
         const listener = vi.fn();
         const unregistered = vi.fn();
 
-        emitter.on('action:start', listener);
+        emitter.on('action:started', listener);
 
         expect(() => {
-          emitter.off('action:start', unregistered);
+          emitter.off('action:started', unregistered);
         }).not.toThrow();
 
-        emitter.emit('action:start', {details: {actorId: 'a-1'}});
+        emitter.emit('action:started', {details: {actorId: 'a-1'}});
 
         expect(listener).toHaveBeenCalledTimes(1);
         expect(unregistered).not.toHaveBeenCalled();
@@ -197,15 +197,15 @@ export function runEventComplianceTests(factories: EventComplianceTestSuite): vo
         const persistent = vi.fn();
         const oneShot = vi.fn();
 
-        emitter.on('action:start', persistent);
-        emitter.once('action:start', persistent);
-        emitter.once('action:end', oneShot);
-        emitter.on('action:end', oneShot);
+        emitter.on('action:started', persistent);
+        emitter.once('action:started', persistent);
+        emitter.once('action:ended', oneShot);
+        emitter.on('action:ended', oneShot);
 
-        emitter.emit('action:start', {details: {actorId: 'a-1'}});
-        emitter.emit('action:start', {details: {actorId: 'a-1'}});
-        emitter.emit('action:end', {details: {actorId: 'a-1', success: true}});
-        emitter.emit('action:end', {details: {actorId: 'a-1', success: true}});
+        emitter.emit('action:started', {details: {actorId: 'a-1'}});
+        emitter.emit('action:started', {details: {actorId: 'a-1'}});
+        emitter.emit('action:ended', {details: {actorId: 'a-1', success: true}});
+        emitter.emit('action:ended', {details: {actorId: 'a-1', success: true}});
 
         expect(persistent).toHaveBeenCalledTimes(2);
         expect(oneShot).toHaveBeenCalledTimes(1);
@@ -215,17 +215,17 @@ export function runEventComplianceTests(factories: EventComplianceTestSuite): vo
         const emitter = createEmitter();
         const calls: string[] = [];
 
-        emitter.on('action:start', () => {
+        emitter.on('action:started', () => {
           calls.push('exact:first');
         });
         emitter.on('action:*', () => {
           calls.push('glob:second');
         });
-        emitter.on('action:start', () => {
+        emitter.on('action:started', () => {
           calls.push('exact:third');
         });
 
-        emitter.emit('action:start', {details: {actorId: 'a-1'}});
+        emitter.emit('action:started', {details: {actorId: 'a-1'}});
 
         expect(calls).toEqual(['exact:first', 'glob:second', 'exact:third']);
       });
@@ -236,13 +236,13 @@ export function runEventComplianceTests(factories: EventComplianceTestSuite): vo
           throw new Error('boom');
         });
 
-        emitter.once('action:start', listener);
+        emitter.once('action:started', listener);
 
         expect(() => {
-          emitter.emit('action:start', {details: {actorId: 'a-1'}});
+          emitter.emit('action:started', {details: {actorId: 'a-1'}});
         }).toThrow('boom');
         expect(() => {
-          emitter.emit('action:start', {details: {actorId: 'a-1'}});
+          emitter.emit('action:started', {details: {actorId: 'a-1'}});
         }).not.toThrow();
 
         expect(listener).toHaveBeenCalledTimes(1);
@@ -255,16 +255,16 @@ export function runEventComplianceTests(factories: EventComplianceTestSuite): vo
           calls.push('second');
         });
 
-        emitter.on('action:start', () => {
+        emitter.on('action:started', () => {
           calls.push('first');
-          emitter.off('action:start', second);
-          emitter.on('action:start', () => {
+          emitter.off('action:started', second);
+          emitter.on('action:started', () => {
             calls.push('late');
           });
         });
-        emitter.on('action:start', second);
+        emitter.on('action:started', second);
 
-        emitter.emit('action:start', {details: {actorId: 'a-1'}});
+        emitter.emit('action:started', {details: {actorId: 'a-1'}});
 
         expect(calls).toEqual(['first', 'second']);
       });
@@ -273,18 +273,18 @@ export function runEventComplianceTests(factories: EventComplianceTestSuite): vo
         const emitter = createEmitter();
         const calls: string[] = [];
 
-        emitter.on('action:start', () => {
-          calls.push('action:start:before');
-          emitter.emit('tick');
-          calls.push('action:start:after');
+        emitter.on('action:started', () => {
+          calls.push('action:started:before');
+          emitter.emit('clock:ticked');
+          calls.push('action:started:after');
         });
-        emitter.on('tick', () => {
-          calls.push('tick');
+        emitter.on('clock:ticked', () => {
+          calls.push('clock:ticked');
         });
 
-        emitter.emit('action:start', {details: {actorId: 'a-1'}});
+        emitter.emit('action:started', {details: {actorId: 'a-1'}});
 
-        expect(calls).toEqual(['action:start:before', 'tick', 'action:start:after']);
+        expect(calls).toEqual(['action:started:before', 'clock:ticked', 'action:started:after']);
       });
     });
 
@@ -294,23 +294,23 @@ export function runEventComplianceTests(factories: EventComplianceTestSuite): vo
         const listener = vi.fn();
 
         emitter.on('action:*', (event) => {
-          expectTypeOf(event.type).toEqualTypeOf<'action:start' | 'action:end'>();
+          expectTypeOf(event.type).toEqualTypeOf<'action:started' | 'action:ended'>();
           listener(event.type);
         });
 
-        emitter.emit('action:start', {details: {actorId: 'a-1'}});
-        emitter.emit('action:end', {details: {actorId: 'a-1', success: true}});
+        emitter.emit('action:started', {details: {actorId: 'a-1'}});
+        emitter.emit('action:ended', {details: {actorId: 'a-1', success: true}});
 
-        expect(listener).toHaveBeenNthCalledWith(1, 'action:start');
-        expect(listener).toHaveBeenNthCalledWith(2, 'action:end');
+        expect(listener).toHaveBeenNthCalledWith(1, 'action:started');
+        expect(listener).toHaveBeenNthCalledWith(2, 'action:ended');
       });
 
       it('does not call glob listeners that do not match the emitted event', () => {
         const emitter = createEmitter();
         const listener = vi.fn();
 
-        emitter.on('tick', listener);
-        emitter.emit('action:start', {details: {actorId: 'a-1'}});
+        emitter.on('clock:ticked', listener);
+        emitter.emit('action:started', {details: {actorId: 'a-1'}});
 
         expect(listener).not.toHaveBeenCalled();
       });
@@ -322,13 +322,13 @@ export function runEventComplianceTests(factories: EventComplianceTestSuite): vo
         emitter.on('action:*', () => {
           calls.push('action:*');
         });
-        emitter.on('*:start', () => {
-          calls.push('*:start');
+        emitter.on('*:started', () => {
+          calls.push('*:started');
         });
 
-        emitter.emit('action:start', {details: {actorId: 'a-1'}});
+        emitter.emit('action:started', {details: {actorId: 'a-1'}});
 
-        expect(calls).toEqual(['action:*', '*:start']);
+        expect(calls).toEqual(['action:*', '*:started']);
       });
 
       it('fires a once glob listener only once and removes it through off', () => {
@@ -336,13 +336,13 @@ export function runEventComplianceTests(factories: EventComplianceTestSuite): vo
         const listener = vi.fn();
 
         emitter.once('action:*', listener);
-        emitter.emit('action:start', {details: {actorId: 'a-1'}});
-        emitter.emit('action:end', {details: {actorId: 'a-1', success: true}});
+        emitter.emit('action:started', {details: {actorId: 'a-1'}});
+        emitter.emit('action:ended', {details: {actorId: 'a-1', success: true}});
 
         expect(listener).toHaveBeenCalledTimes(1);
 
         emitter.off('action:*', listener);
-        emitter.emit('action:start', {details: {actorId: 'a-1'}});
+        emitter.emit('action:started', {details: {actorId: 'a-1'}});
 
         expect(listener).toHaveBeenCalledTimes(1);
       });
@@ -355,14 +355,14 @@ export function runEventComplianceTests(factories: EventComplianceTestSuite): vo
         root.addChild(child);
         const calls: string[] = [];
 
-        root.on('action:start', () => {
+        root.on('action:started', () => {
           calls.push('root');
         });
-        child.on('action:start', () => {
+        child.on('action:started', () => {
           calls.push('child');
         });
 
-        const event = child.emit('action:start', {details: {actorId: 'a-1'}});
+        const event = child.emit('action:started', {details: {actorId: 'a-1'}});
 
         expect(calls).toEqual(['child', 'root']);
         expect(event.origin).toBe(child);
@@ -378,17 +378,17 @@ export function runEventComplianceTests(factories: EventComplianceTestSuite): vo
         middle.addChild(leaf);
         const calls: string[] = [];
 
-        root.on('action:start', () => {
+        root.on('action:started', () => {
           calls.push('root');
         });
-        middle.on('action:start', () => {
+        middle.on('action:started', () => {
           calls.push('middle');
         });
-        leaf.on('action:start', () => {
+        leaf.on('action:started', () => {
           calls.push('leaf');
         });
 
-        const event = leaf.emit('action:start', {details: {actorId: 'a-1'}});
+        const event = leaf.emit('action:started', {details: {actorId: 'a-1'}});
 
         expect(calls).toEqual(['leaf', 'middle', 'root']);
         expect(event.propagationPath()).toEqual([leaf, middle, root]);
@@ -401,10 +401,10 @@ export function runEventComplianceTests(factories: EventComplianceTestSuite): vo
         const rootListener = vi.fn();
         const childListener = vi.fn();
 
-        root.on('action:start', rootListener);
-        child.on('action:start', childListener);
+        root.on('action:started', rootListener);
+        child.on('action:started', childListener);
 
-        const event = child.emit('action:start', {
+        const event = child.emit('action:started', {
           bubbles: false,
           details: {actorId: 'a-1'},
         });
@@ -420,18 +420,18 @@ export function runEventComplianceTests(factories: EventComplianceTestSuite): vo
         root.addChild(child);
         const calls: string[] = [];
 
-        child.on('action:start', (event) => {
+        child.on('action:started', (event) => {
           calls.push('first');
           event.stopPropagation();
         });
-        child.on('action:start', () => {
+        child.on('action:started', () => {
           calls.push('second');
         });
-        root.on('action:start', () => {
+        root.on('action:started', () => {
           calls.push('root');
         });
 
-        child.emit('action:start', {details: {actorId: 'a-1'}});
+        child.emit('action:started', {details: {actorId: 'a-1'}});
 
         expect(calls).toEqual(['first', 'second']);
       });
@@ -442,18 +442,18 @@ export function runEventComplianceTests(factories: EventComplianceTestSuite): vo
         root.addChild(child);
         const calls: string[] = [];
 
-        child.on('action:start', (event) => {
+        child.on('action:started', (event) => {
           calls.push('first');
           event.stopImmediatePropagation();
         });
-        child.on('action:start', () => {
+        child.on('action:started', () => {
           calls.push('second');
         });
-        root.on('action:start', () => {
+        root.on('action:started', () => {
           calls.push('root');
         });
 
-        child.emit('action:start', {details: {actorId: 'a-1'}});
+        child.emit('action:started', {details: {actorId: 'a-1'}});
 
         expect(calls).toEqual(['first']);
       });
@@ -464,16 +464,16 @@ export function runEventComplianceTests(factories: EventComplianceTestSuite): vo
         root.addChild(child);
         const calls: string[] = [];
 
-        child.on('action:start', () => {
+        child.on('action:started', () => {
           calls.push('child');
           throw new Error('boom');
         });
-        root.on('action:start', () => {
+        root.on('action:started', () => {
           calls.push('root');
         });
 
         expect(() => {
-          child.emit('action:start', {details: {actorId: 'a-1'}});
+          child.emit('action:started', {details: {actorId: 'a-1'}});
         }).toThrow('boom');
 
         expect(calls).toEqual(['child', 'root']);
@@ -487,9 +487,9 @@ export function runEventComplianceTests(factories: EventComplianceTestSuite): vo
         const rootListener = vi.fn();
         const detach = root.addChild(child);
 
-        root.on('action:start', rootListener);
+        root.on('action:started', rootListener);
         detach();
-        child.emit('action:start', {details: {actorId: 'a-1'}});
+        child.emit('action:started', {details: {actorId: 'a-1'}});
 
         expect(rootListener).not.toHaveBeenCalled();
         expect(() => detach()).not.toThrow();
@@ -502,12 +502,12 @@ export function runEventComplianceTests(factories: EventComplianceTestSuite): vo
         root.addChild(child);
         const rootListener = vi.fn();
 
-        root.on('action:start', rootListener);
+        root.on('action:started', rootListener);
 
         expect(() => root.removeChild(unrelated)).not.toThrow();
 
         root.removeChild(child);
-        child.emit('action:start', {details: {actorId: 'a-1'}});
+        child.emit('action:started', {details: {actorId: 'a-1'}});
 
         expect(rootListener).not.toHaveBeenCalled();
       });
@@ -522,9 +522,9 @@ export function runEventComplianceTests(factories: EventComplianceTestSuite): vo
 
         const firstListener = vi.fn();
         const secondListener = vi.fn();
-        firstParent.on('tick', firstListener);
-        secondParent.on('tick', secondListener);
-        child.emit('tick');
+        firstParent.on('clock:ticked', firstListener);
+        secondParent.on('clock:ticked', secondListener);
+        child.emit('clock:ticked');
 
         expect(firstListener).not.toHaveBeenCalled();
         expect(secondListener).toHaveBeenCalledOnce();
@@ -537,14 +537,14 @@ export function runEventComplianceTests(factories: EventComplianceTestSuite): vo
 
         root.addChild(child);
         const secondDetach = root.addChild(child);
-        root.on('action:start', rootListener);
+        root.on('action:started', rootListener);
 
-        child.emit('action:start', {details: {actorId: 'a-1'}});
+        child.emit('action:started', {details: {actorId: 'a-1'}});
 
         expect(rootListener).toHaveBeenCalledTimes(1);
 
         secondDetach();
-        child.emit('action:start', {details: {actorId: 'a-1'}});
+        child.emit('action:started', {details: {actorId: 'a-1'}});
 
         expect(rootListener).toHaveBeenCalledTimes(1);
       });
@@ -573,7 +573,7 @@ export function runEventComplianceTests(factories: EventComplianceTestSuite): vo
     describe('emit(event) overload and identity', () => {
       it('dispatches a pre-constructed branded event and returns the same instance', () => {
         const emitter = createEmitter();
-        const event = createEvent('action:start', {details: {actorId: 'a-1'}});
+        const event = createEvent('action:started', {details: {actorId: 'a-1'}});
 
         expect(emitter.emit(event)).toBe(event);
       });
@@ -600,9 +600,9 @@ export function runEventComplianceTests(factories: EventComplianceTestSuite): vo
 }
 
 /** Builds an object structurally satisfying the event contract without the brand. */
-function lookalikeEvent(): Contract.Event<'action:start', {actorId: string}> {
+function lookalikeEvent(): Contract.Event<'action:started', {actorId: string}> {
   return {
-    type: 'action:start',
+    type: 'action:started',
     details: {actorId: 'a-1'},
     bubbles: true,
     origin: null,

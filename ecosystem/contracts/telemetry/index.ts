@@ -117,12 +117,12 @@ export type TelemetryEntry = TelemetryTimerEntry | TelemetryValueEntry;
 /**
  * Event map for the telemetry subsystem.
  *
- * All telemetry events are prefixed with `telemetry:` followed by the
- * fully qualified namespace (e.g. `telemetry:app.http.request`).
- * Listeners can use glob patterns: `telemetry:*` for all events,
- * or `telemetry:app.http.*` for namespace filtering.
+ * All telemetry events use the metric's fully qualified namespace followed
+ * by the past-tense occurrence `recorded` (for example,
+ * `telemetry:app.http.request.recorded`). Listeners can use glob patterns such
+ * as `telemetry:*` for all entries or `telemetry:app.http.*` for one namespace.
  */
-export type TelemetryEventMap = {[key: `telemetry:${string}`]: TelemetryEntry};
+export type TelemetryEventMap = {[key: `telemetry:${string}.recorded`]: TelemetryEntry};
 
 /**
  * A handle for an in-progress timer measurement.
@@ -324,7 +324,7 @@ export interface ReadonlyTelemetry {
  * @example Forking with namespace:
  * ```typescript
  * const httpTelemetry = telemetry.fork('http', { tags: { layer: 'transport' } });
- * httpTelemetry.startTimer('request'); // emits as 'app.http.request'
+ * httpTelemetry.startTimer('request'); // emits as 'telemetry:app.http.request.recorded'
  * ```
  */
 export interface Telemetry extends EventEmitter<TelemetryEventMap>, ReadonlyTelemetry {
@@ -410,8 +410,8 @@ export interface Telemetry extends EventEmitter<TelemetryEventMap>, ReadonlyTele
    * Flushes all buffered entries immediately.
    *
    * Cascades depth-first through the fork tree: all children flush before
-   * this instance. Each entry is emitted as an event using the qualified
-   * namespace as the event type.
+   * this instance. Each entry is emitted as an event using its qualified
+   * namespace followed by `.recorded` as the event type.
    *
    * @throws When the instance has been disposed.
    */

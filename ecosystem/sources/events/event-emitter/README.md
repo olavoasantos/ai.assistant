@@ -16,9 +16,9 @@ pnpm install @ai.assistant/event-emitter
 import {EventEmitter} from '@ai.assistant/event-emitter';
 
 interface ToolEvents {
-  'tool:start': {toolId: string};
-  'tool:end': {toolId: string; success: boolean};
-  'turn:end': undefined;
+  'tool:started': {toolId: string};
+  'tool:ended': {toolId: string; success: boolean};
+  'turn:ended': undefined;
 }
 
 const emitter = new EventEmitter<ToolEvents>();
@@ -27,8 +27,8 @@ emitter.on('tool:*', (event) => {
   console.log(event.type, event.details.toolId);
 });
 
-emitter.emit('tool:start', {details: {toolId: 'lathe'}});
-// → 'tool:start' 'lathe'
+emitter.emit('tool:started', {details: {toolId: 'lathe'}});
+// → 'tool:started' 'lathe'
 ```
 
 ## Documentation

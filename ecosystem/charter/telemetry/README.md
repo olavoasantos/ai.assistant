@@ -65,7 +65,7 @@ Provide the contract surface and behavioural invariants for a metrics collection
 ### Flush Behavior
 
 - `flush()` is synchronous. It cascades depth-first through the fork tree: all children flush before the parent.
-- Each instance emits its own entries as events on itself, using the fully qualified namespace as the event type. Events then bubble up through the EventEmitter parent chain.
+- Each instance emits its own entries as events on itself, using `telemetry:{fullyQualifiedMetric}.recorded` as the event type. Events then bubble up through the EventEmitter parent chain.
 - A re-entrancy guard prevents infinite recursion: `flush()` called from within a flush listener returns immediately (no-op).
 - The queue is snapshot-spliced before emission. Entries recorded during a flush go into the fresh live queue, safe for the next flush cycle.
 - `startFlushing(opts?)` enables periodic flushing via an interval. `stopFlushing()` disables it.
@@ -106,7 +106,7 @@ Provide the contract surface and behavioural invariants for a metrics collection
 
 Future metric types (counters, gauges, histograms, distributions) extend this foundation via additional recording methods and accumulator maps. The queue-based flush architecture supports this — accumulated metrics would be snapshot-emitted alongside queued entries.
 
-The event emission mechanism provides the extensibility hook: consumers subscribe to telemetry events (via glob patterns like `telemetry:app.http.*`) to build custom backends (transport adapters, console logging, dashboards). Telemetry events are typed through the `TelemetryEventMap` per-emitter type parameter, consistent with the event emitter charter's per-emitter event map approach — no global event registry is involved.
+The event emission mechanism provides the extensibility hook: consumers subscribe to telemetry events (via glob patterns like `telemetry:app.http.*.recorded`) to build custom backends (transport adapters, console logging, dashboards). Telemetry events are typed through the `TelemetryEventMap` per-emitter type parameter, consistent with the event emitter charter's per-emitter event map approach — no global event registry is involved.
 
 ## Constraints
 

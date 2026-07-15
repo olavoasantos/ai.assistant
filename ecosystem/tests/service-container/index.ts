@@ -399,8 +399,8 @@ export function runServiceContainerComplianceTests(
         const child = root.fork();
         const listener = vi.fn();
 
-        root.on('test:event', listener);
-        child.emit('test:event');
+        root.on('test:emitted', listener);
+        child.emit('test:emitted');
 
         expect(listener).toHaveBeenCalled();
       });
@@ -661,14 +661,14 @@ export function runServiceContainerComplianceTests(
         const child = parent.fork();
         const listener = vi.fn();
 
-        parent.on('test', listener);
+        parent.on('test:emitted', listener);
 
-        child.emit('test');
+        child.emit('test:emitted');
         expect(listener).toHaveBeenCalledTimes(1);
 
         await child.dispose();
 
-        expect(() => child.emit('test')).toThrow(/disposed/);
+        expect(() => child.emit('test:emitted')).toThrow(/disposed/);
       });
     });
 

@@ -27,6 +27,13 @@ A typed, bubbling event emitter for the entire platform. Any subsystem that need
 - Identity checks never use `instanceof`. Guards use symbol presence, surviving multiple package versions, bundler deduplication failures, and realm crossings.
 - Brand identity is trust-based: objects without the brand symbol are rejected, but any code that knows the brand key string can forge acceptance. This is the deliberate `Symbol.for()` trade-off shared across all foundation modules.
 
+### Event Names
+
+- Typed occurrence events follow the platform convention `{domain}:{dot.notation.pastTenseVerb}`.
+- Event maps use one canonical name for an occurrence regardless of which emitter or ancestor observes it.
+- EventEmitter remains domain-agnostic and accepts arbitrary string maps; the subsystem declaring each event map is responsible for naming compliance.
+- Glob patterns are listener selectors, not event names, and may end in `*` rather than a past-tense verb.
+
 ### Event Lifecycle
 
 - An event can only be emitted once. Re-emitting a previously dispatched event throws.
@@ -66,7 +73,7 @@ A typed, bubbling event emitter for the entire platform. Any subsystem that need
 ### Glob Patterns
 
 - Patterns containing `*` match event names where `*` expands to any substring.
-- `tool:*` matches `tool:start`, `tool:end`, etc.
+- `tool:*` matches `tool:started`, `tool:ended`, etc.
 - Exact patterns (no `*`) use strict equality matching.
 
 ### Emit Overloads
@@ -87,9 +94,9 @@ Event payloads are typed through the `EventMap` generic parameter on `EventEmitt
 
 ```typescript
 interface ToolEvents {
-  'tool:start': {toolId: string};
-  'tool:end': {toolId: string; success: boolean};
-  'turn:end': undefined;
+  'tool:started': {toolId: string};
+  'tool:ended': {toolId: string; success: boolean};
+  'turn:ended': undefined;
 }
 ```
 
