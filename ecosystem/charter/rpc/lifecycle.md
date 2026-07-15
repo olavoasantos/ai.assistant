@@ -15,13 +15,24 @@ This document is part of the normative [RPC charter](./README.md).
 
 ## Disconnect, Reconnect, and Disposal
 
+- Transport closure emits one typed closure event and settles one closure promise. Nonterminal transport failures emit typed error events.
 - Transport closure, liveness failure, or explicit disconnect ends the current session.
+- A publicly established session starts active, transitions through disposing during teardown, and ends disposed. Establishing and resumable-inactive sessions are not public states.
 - Session termination rejects pending calls and promises, cancels active work and streams, removes watches, detaches transport listeners, disposes session plugin state, invalidates authority, and releases budget.
+- Session disconnect is idempotent and converges with simultaneous transport closure or endpoint disposal without duplicate cleanup.
 - Late frames from a terminated session have no effect on a later session.
 - Reconnection creates a freshly admitted and negotiated session. Pending work and wire authority do not resume implicitly.
-- Owner-side values may survive according to retention policy and may be reissued later, but prior consumer facades remain stale.
+- A client exposes its root synchronously only after connection establishes the session and root. Access before readiness or while disconnected fails synchronously.
+- Reconnection creates a fresh root facade. Owner-side values may survive according to retention policy and may be reissued later, but prior facades remain stale.
 - Endpoint disposal is terminal and releases endpoint-owned sessions, timers, plugins, telemetry, and transport bindings according to ownership.
-- Internally created resources are owned by RPC. Caller-injected resources remain caller-owned unless their contract states otherwise.
+- RPC always detaches transport subscriptions it created. Internally created resources are owned by RPC; caller-injected resources, including transports, remain caller-owned unless ownership transfer is explicit.
+
+## Root Exposure Lifecycle
+
+- Exposure changes commit atomically at the server boundary and propagate to existing sessions in committed order.
+- Updating an exposure preserves that layer’s precedence. Removing an exposure is idempotent and reveals any earlier layer beneath it.
+- Removing or replacing an exposed top-level property affects future root discovery but does not revoke already issued references or reroute operations already accepted.
+- Disconnect stops root propagation to that session. A later connection receives the current root through a fresh session-scoped facade.
 
 ## Release and Retention
 

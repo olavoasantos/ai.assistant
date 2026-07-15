@@ -40,7 +40,9 @@ RPC-specific hooks extend the ecosystem plugin contracts. RPC does not maintain 
 
 ## Events
 
-Providers, consumers, sessions, peers, calls, references, promises, streams, plugins, budgets, and transports may expose typed ecosystem events. Session event relationships may bubble to their owning endpoint without making network events part of the wire protocol.
+Transports, sessions, nodes, servers, and clients expose typed lifecycle and diagnostic events through the ecosystem event model. RPC event names use the `rpc:{dot.notation.pastTenseVerb}` pattern and describe the subject occurrence rather than the observing facade. Transport events bubble through their session, node, and conventional endpoint ownership chain; session events bubble through their node and endpoint. Event bubbling is local observation and never becomes network protocol traffic.
+
+Current status and one-shot closure promises remain authoritative because event observation can race. Complete inbound frames use the transport subscription data plane rather than high-volume lifecycle events. Calls, references, promises, streams, plugins, and budgets may add typed events when their contracts define stable observation semantics.
 
 ## Telemetry
 
@@ -52,4 +54,4 @@ The dedicated Preact Signals plugin is an explicit exception to the ordinary fou
 
 ## Executable
 
-RPC providers and consumers do not inherit from Executable. Applications and Executables may own RPC endpoints through ordinary lifecycle integration without importing rendering, kernel, service-container, or application policy into RPC.
+RPC servers, clients, nodes, and sessions do not inherit from Executable. Applications and Executables may own RPC endpoints through ordinary lifecycle integration without importing rendering, kernel, service-container, or application policy into RPC.

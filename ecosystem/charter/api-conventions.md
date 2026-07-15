@@ -247,6 +247,49 @@ Rules:
 - Self-attachment and cycles throw.
 - Ignoring `removeChild()` for non-children is safe (no-op).
 
+### `subscribe(listener)` — Single-value observation
+
+Subscribable values deliver one value to each listener invocation and return a cleanup function.
+
+```typescript
+const unsubscribe = source.subscribe((value) => {
+  // React to one emitted value.
+});
+```
+
+When one emission carries several correlated fields, those fields form one read-only value object:
+
+```typescript
+transport.subscribe(({frame, context}) => {
+  // One delivery value contains both fields.
+});
+```
+
+Rules:
+
+- A subscription listener always accepts exactly one emitted value.
+- Correlated fields are grouped in a named, read-only object rather than passed as positional listener arguments.
+- `subscribe()` returns a cleanup function that removes that exact subscription.
+- Subscriptions represent a value or data stream. Discrete lifecycle and diagnostic notifications use the typed `EventEmitter` contract instead.
+
+### Event names — Domain-prefixed past-tense occurrences
+
+Typed lifecycle and domain events use one domain prefix followed by a dot-notation occurrence namespace whose final segment is a past-tense verb.
+
+```typescript
+emitter.on('rpc:session.connected', listener);
+emitter.on('rpc:session.closed', listener);
+emitter.on('executable:initialized', listener);
+```
+
+Rules:
+
+- Event names use the shape `{domain}:{dot.notation.pastTenseVerb}`.
+- Exactly one colon separates the owning domain from the occurrence namespace; subsequent namespace segments use dots.
+- The final segment is a past-tense verb because the event announces something that has already happened.
+- The name describes the subject and occurrence, not the emitter or observer. Bubbling metadata identifies where the event originated and where it is observed.
+- Different emitters use the same event name for the same occurrence instead of introducing facade-specific aliases.
+
 ### Guards — Runtime identity checks
 
 Two guard patterns exist on the platform, chosen by dependency constraints:

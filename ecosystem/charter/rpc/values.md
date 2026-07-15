@@ -2,6 +2,15 @@
 
 This document is part of the normative [RPC charter](./README.md).
 
+## Root Capability Directory
+
+- A client session receives one stable root facade after connection establishes readiness.
+- The facade is live within that session: committed server exposure changes update future root-path resolution without replacing the facade.
+- Root updates preserve committed order. Missing or invalid updates trigger bounded recovery or session termination rather than uncertain authority.
+- A top-level root property may designate copied data or remote references according to its value kind.
+- Exposure replacement or removal does not mutate copied values already received or revoke remote references already issued.
+- A root facade belongs to exactly one session and remains stale after disconnect, even when the client reconnects to the same server.
+
 ## Values by Copy
 
 - Primitive values, arrays, and plain data records cross by copy unless a negotiated wire plugin handles them differently.
@@ -24,7 +33,7 @@ This document is part of the normative [RPC charter](./README.md).
 
 ## Functions and Callbacks
 
-- Either peer may issue a local function as a callable remote reference.
+- Either node may issue a local function as a callable remote reference.
 - Calling a remote function uses the same authority, correlation, error, validation, middleware, cancellation, budget, and disconnect semantics as other calls.
 - Repeated references to the same function preserve identity during the live session.
 - A function passed back to its owner resolves to the original local function.

@@ -2,12 +2,12 @@
 
 ## Purpose
 
-Provide the platform’s default foundation for remote communication across execution boundaries. RPC lets a consumer use a provider-owned root and exchange rich values without coupling application code to a particular transport, while preserving the latency, partial failure, authority, and lifecycle realities of remote execution.
+Provide the platform’s default foundation for remote communication across execution boundaries. RPC lets a client use a server-owned root and exchange rich values without coupling application code to a particular transport, while preserving the latency, partial failure, authority, and lifecycle realities of remote execution.
 
 ## What It Is
 
 - A remote-call system for applications, processes, workers, frames, and services.
-- A remote-capability graph: the provider root is the bootstrap authority, and references reachable from exchanged values may delegate further authority.
+- A remote-capability graph: the server root is the bootstrap authority, and references reachable from exchanged values may delegate further authority.
 - A rich-value system supporting copied data, remote objects/models, functions, pending promises, streams, and plugin-defined values.
 - A session system with explicit compatibility, cancellation, resource accounting, disconnect, and cleanup semantics.
 - A transport-independent system with equivalent behavior over string and structured-clone representations.
@@ -34,21 +34,27 @@ This entry point and the following documents together form the normative RPC cha
 
 ## Entities
 
-### Provider
+### Server
 
-A provider owns the root value and admits transports that the application has already authenticated and approved. It may support multiple sessions concurrently. Each session has independent authority, work, plugins, resources, and cleanup even when sessions receive references to the same owner-side value.
+A server owns a live root capability directory and admits transports that the application has already authenticated and approved. It may support multiple sessions concurrently. Each session has independent authority, work, plugins, resources, and cleanup even when sessions receive references to the same owner-side value.
 
-The provider/consumer distinction describes connection topology and root ownership. It does not make remote reference behavior one-directional.
+Server describes bootstrap-root ownership and admission, not a deployment environment. A server may run in an application, process, worker, frame, or service.
 
-### Consumer
+### Client
 
-A consumer establishes one session and uses the provider’s remote root. It may issue its own local values as remote references when passing callbacks or other rich values to the provider. It does not expose a second root merely to support bidirectional behavior.
+A client establishes one current session and uses the server’s remote root. It may issue its own local values as remote references when passing callbacks or other rich values to the server. It does not expose a second root merely to support bidirectional behavior.
 
-### Session and Peers
+Client describes session initiation and root consumption, not one-directional remote behavior.
 
-A session is one live relationship between two peers. Each peer can issue local references, hydrate references owned by the other peer, initiate operations on references it has received, and settle operations initiated by the other peer.
+### Node
 
-A session owns:
+A node is an endpoint-scoped, direction-neutral RPC participant. A node can issue local references, hydrate references owned by remote nodes, initiate operations on received references, and settle operations initiated by remote nodes. One node may participate in multiple sessions without sharing authority or session state between them.
+
+Servers and clients provide conventional bootstrap topology over node behavior. Advanced integrations may use node admission and connection directly without changing session symmetry.
+
+### Session
+
+A session is one live relationship between two nodes. Transports, sessions, nodes, servers, and clients participate in the typed ecosystem event hierarchy while status and closure promises remain authoritative lifecycle truth. A session owns:
 
 - negotiated protocol and wire-plugin compatibility;
 - issued and received authority;
@@ -61,20 +67,22 @@ Disconnect ends the session. A later connection is a new session, even when it c
 
 ### Transport
 
-A transport moves complete RPC frames after application admission and reports readiness, inbound data, errors, closure, and cleanup. RPC supports:
+A transport moves complete RPC frames after application admission. It reports readiness and one-shot closure through promises, delivers inbound frames through single-value subscriptions, and reports failures and closure through typed ecosystem events. RPC supports:
 
 - string representations for WebSocket, byte streams, and similar boundaries;
 - raw representations for structured-clone boundaries such as Worker and MessagePort.
 
 Raw transports may transfer supported values by ownership. Transfer metadata is a transport concern and never grants remote-reference authority.
 
-Transports do not define RPC authentication, application methods, value identity, retry, or cleanup policy beyond the resources they own.
+Transports do not define RPC authentication, application methods, value identity, retry, or cleanup policy beyond the resources they own. RPC detaches every subscription it creates. A caller-injected transport remains caller-owned unless ownership is transferred explicitly; only an owned transport is terminally disposed by RPC.
 
-### Root and Remote References
+### Root Exposures and Remote References
 
-The root is the first remote authority a provider issues to an accepted consumer session. A remote reference designates an owner-side value and grants only the receiving session permission to perform the operations defined for that value kind.
+The root is a live capability directory and the first remote authority a server issues to an accepted client session. A server builds it from exposure layers. Each exposure owns one removable layer and may atomically replace several top-level properties without changing its precedence. The latest remaining exposure for a top-level property is visible; removing it reveals the next layer beneath it.
 
-References may appear in arguments, results, notifications, object snapshots, callback traffic, promise settlements, stream items, reactive updates, and plugin-defined values. Transmitting a reference deliberately delegates its authority to the receiving session.
+Committed root changes propagate to existing sessions through their current root facade. Removing an exposure prevents future discovery of its top-level properties through that layer but does not revoke references already issued from it. Exposure removal is idempotent, and exposure changes do not reroute operations already accepted against earlier authority.
+
+A remote reference designates an owner-side value and grants only the receiving session permission to perform the operations defined for that value kind. References may appear in arguments, results, notifications, object snapshots, callback traffic, promise settlements, stream items, reactive updates, and plugin-defined values. Transmitting a reference deliberately delegates its authority to the receiving session.
 
 ### Remote Values and Calls
 
@@ -86,7 +94,7 @@ A call requests one invocation of an authorized method or function and correlate
 
 RPC plugins are ordinary ecosystem plugins with RPC-specific hooks. Plugins may participate in value matching, serialization, hydration, middleware, compatibility, lifecycle, observation, and cleanup.
 
-A wire-affecting plugin changes values or messages understood by the peer. It therefore declares stable compatibility information and participates in session negotiation. Local-only middleware and observers do not affect wire compatibility.
+A wire-affecting plugin changes values or messages understood by the remote node. It therefore declares stable compatibility information and participates in session negotiation. Local-only middleware and observers do not affect wire compatibility.
 
 ### Session Budget
 

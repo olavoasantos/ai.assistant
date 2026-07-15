@@ -19,6 +19,7 @@ export default defineConfig({
         'plugins/index': 'plugins/index.ts',
         'intents/index': 'intents/index.ts',
         'renderable/index': 'renderable/index.ts',
+        'rpc/index': 'rpc/index.ts',
         'service-container/index': 'service-container/index.ts',
         'signals/index': 'signals/index.ts',
         'telemetry/index': 'telemetry/index.ts',
