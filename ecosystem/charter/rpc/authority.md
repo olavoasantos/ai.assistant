@@ -16,7 +16,9 @@ This document is part of the normative [RPC charter](./README.md).
 - The root is the bootstrap authority for one accepted session.
 - A node may operate only on the root and references deliberately issued to that session.
 - A reference identifier alone grants no authority. Guessing, replaying, or learning another session’s identifier cannot access its value.
+- Public intent, ownership, and identity brands expose no wire identifier, mutable registry, or authority token.
 - Every reference operation verifies live-session authority. This includes invocation, argument revival, round trips, watching, updates, settlement, release, stream control, and plugin control.
+- Crossing a reference reverses its local view: an owner-local value becomes remote to its receiver, while returning that remote reference to its owner revives the original local value. A value received from the wrong session cannot participate in that round trip.
 - Delegation occurs only when transmission of the containing value commits successfully. Failed serialization or failed delivery cannot leave authority granted accidentally.
 - Released references and references from disconnected sessions are no longer usable, even if their identifiers are replayed.
 - Authority and retention are distinct. Retaining an owner-side value does not retain a dead session’s permission to use it.

@@ -107,7 +107,7 @@ A budget is an authority boundary as well as an operational limit: one session c
 - RPC sends no frames and discloses no root or application value before application admission and successful compatibility establishment.
 - Authority begins with the issued root and extends only through references deliberately transmitted to a live session.
 - Every reference operation verifies live-session authority.
-- Remote value kinds retain distinct identity, delivery, ordering, release, and cleanup semantics.
+- Remote value kinds retain distinct type projection, identity, delivery, ordering, release, and cleanup semantics in either ownership direction.
 - Timeout and cancellation do not imply rollback or prove that owner-side effects did not occur.
 - Disconnect invalidates session authority and settles or cleans up all session work. Reconnection creates a new session.
 - Every accepted session has finite limits, including trusted and in-process sessions.

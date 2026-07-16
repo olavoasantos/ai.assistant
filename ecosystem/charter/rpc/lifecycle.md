@@ -36,8 +36,9 @@ This document is part of the normative [RPC charter](./README.md).
 
 ## Release and Retention
 
-- Object and function references support deterministic early release.
-- Deterministic release is idempotent at the consumer boundary and produces at most one effective release.
+- Object and function references support deterministic early release through an operation separate from application members.
+- Deterministic release synchronously invalidates the local facade, is idempotent at the consumer boundary, and produces at most one effective release request.
+- Early reference release does not acknowledge domain resource closure. Applications expose an explicit remote operation when they require confirmed business cleanup.
 - Garbage-collection finalization may accelerate release where available but is never required for correctness, security, or bounded resource use.
 - Signals use observation lifecycle, promises use one-shot settlement, and streams use iterator lifecycle rather than object/function release semantics.
 - Owner-side retention begins only after no live session retains authority to the value.

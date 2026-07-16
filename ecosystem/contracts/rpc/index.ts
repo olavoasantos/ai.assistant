@@ -1,5 +1,40 @@
 import type {ApplicationError} from '../error';
 import type {EventEmitter} from '../events';
+import type {
+  RpcCallback,
+  RpcCopy,
+  RpcModel,
+  RpcModelInspector,
+  RpcModelMetadata,
+  RpcReference,
+  RpcReferenceReleaser,
+  RpcRemote,
+  RpcRemoteModel,
+  RpcRemotePromise,
+  RpcRemoteReference,
+  RpcRemoteRoot,
+  RpcStream,
+  RpcUnsupportedValue,
+  RpcValueProjections,
+} from './values';
+
+export type {
+  RpcCallback,
+  RpcCopy,
+  RpcModel,
+  RpcModelInspector,
+  RpcModelMetadata,
+  RpcReference,
+  RpcReferenceReleaser,
+  RpcRemote,
+  RpcRemoteModel,
+  RpcRemotePromise,
+  RpcRemoteReference,
+  RpcRemoteRoot,
+  RpcStream,
+  RpcUnsupportedValue,
+  RpcValueProjections,
+};
 
 /**
  * A read-only subset of an API that can occupy one server exposure layer.
@@ -238,7 +273,7 @@ export interface RpcSessionClosure {
 /**
  * Details emitted after an RPC session has closed.
  *
- * @template RemoteApi - The remote API shape associated with the session.
+ * @template RemoteApi - The unprojected API shape owned by the remote node.
  * @template LocalApi - The complete API shape owned by the local node.
  */
 export interface RpcSessionClosedDetails<
@@ -255,7 +290,7 @@ export interface RpcSessionClosedDetails<
 /**
  * Transport and lifecycle events observable from an RPC session.
  *
- * @template RemoteApi - The remote API shape associated with the session.
+ * @template RemoteApi - The unprojected API shape owned by the remote node.
  * @template LocalApi - The complete API shape owned by the local node.
  */
 export interface RpcSessionEventMap<
@@ -269,7 +304,7 @@ export interface RpcSessionEventMap<
 /**
  * Node events, including lifecycle events bubbled from owned sessions.
  *
- * @template RemoteApi - The remote API shape associated with the node's sessions.
+ * @template RemoteApi - The unprojected API shape owned by remote nodes.
  * @template LocalApi - The complete API shape owned by the node.
  */
 export interface RpcNodeEventMap<
@@ -286,7 +321,7 @@ export interface RpcNodeEventMap<
 /**
  * Events observable from an RPC server, including bubbled node events.
  *
- * @template RemoteApi - The remote API shape associated with server sessions.
+ * @template RemoteApi - The unprojected API shape owned by connected clients.
  * @template LocalApi - The complete API shape owned by the server.
  */
 export interface RpcServerEventMap<
@@ -299,7 +334,7 @@ export interface RpcServerEventMap<
 /**
  * Events observable from an RPC client, including bubbled node events.
  *
- * @template RemoteApi - The remote API shape associated with client sessions.
+ * @template RemoteApi - The unprojected API shape owned by the server.
  * @template LocalApi - The complete API shape owned by the client.
  */
 export interface RpcClientEventMap<
@@ -317,7 +352,7 @@ export interface RpcClientEventMap<
  * teardown may coincide with transport or remote closure. Transport events
  * bubble through the session while current status and `closed` remain authoritative.
  *
- * @template RemoteApi - The remote API shape associated with the session.
+ * @template RemoteApi - The unprojected API shape owned by the remote node.
  * @template LocalApi - The complete API shape owned by the local node.
  */
 export interface RpcSession<
@@ -359,15 +394,15 @@ export interface RpcSession<
  * The root facade belongs only to this session. It becomes stale after
  * disconnect and is never rebound when an endpoint reconnects.
  *
- * @template RemoteApi - The already remote-facing root shape.
+ * @template RemoteApi - The unprojected API shape owned by the remote node.
  * @template LocalApi - The complete API shape owned by the local node.
  */
 export interface RpcConnectedSession<
   RemoteApi extends object,
   LocalApi extends object = Record<string, unknown>,
 > extends RpcSession<RemoteApi, LocalApi> {
-  /** The live, session-scoped remote root facade. */
-  readonly root: RemoteApi;
+  /** The live, session-scoped projection of the remote node's root. */
+  readonly root: RpcRemoteRoot<RemoteApi>;
 }
 
 /**
@@ -377,7 +412,7 @@ export interface RpcConnectedSession<
  * bubble through the node. It exposes no wire reference identifiers,
  * owner-side values, or mutable authority registries.
  *
- * @template RemoteApi - The already remote-facing root shape.
+ * @template RemoteApi - The unprojected API shape owned by remote nodes.
  * @template LocalApi - The complete API shape owned by this node.
  */
 export interface RpcNode<
@@ -442,16 +477,17 @@ export interface RpcNode<
 /**
  * The conventional bootstrap-root owner and incoming-session facade.
  *
- * Events from its node, sessions, and transports bubble through the server.
+ * Events from the server's node, sessions, and transports bubble through this
+ * facade. Generic order remains relative to the local server endpoint.
  *
- * @template RemoteApi - The remote API shape associated with server sessions.
- * @template LocalApi - The complete API shape owned by the server.
+ * @template RemoteApi - The unprojected API shape owned by connected clients.
+ * @template LocalApi - The complete API shape owned and exposed by the server.
  */
 export interface RpcServer<
   RemoteApi extends object = Record<string, unknown>,
   LocalApi extends object = Record<string, unknown>,
 > extends EventEmitter<RpcServerEventMap<RemoteApi, LocalApi>> {
-  /** The direction-neutral node that implements this server endpoint. */
+  /** The direction-neutral node facing client APIs from the server endpoint. */
   readonly node: RpcNode<RemoteApi, LocalApi>;
 
   /** The server's active accepted sessions. */
@@ -460,7 +496,7 @@ export interface RpcServer<
   /**
    * Adds one live layer to the server root capability directory.
    *
-   * @param value - The API fragment supplied by the new layer.
+   * @param value - The server-owned API fragment supplied by the new layer.
    * @returns A handle for atomically updating or removing the layer.
    */
   expose(value: RpcApiFragment<LocalApi>): RpcExposure<LocalApi>;
@@ -470,7 +506,7 @@ export interface RpcServer<
    *
    * @param transport - The structural transport to admit.
    * @param options - Establishment cancellation and transport ownership.
-   * @returns The established server-side session.
+   * @returns The established server-side session facing the client API.
    */
   admit(
     transport: RpcTransport<unknown, unknown>,
@@ -487,30 +523,30 @@ export interface RpcServer<
 }
 
 /**
- * The conventional outgoing-session and remote-root facade.
+ * The conventional outgoing-session and projected remote-root facade.
  *
- * The `RemoteApi` parameter describes an already remote-facing shape. Events
- * from its node, sessions, and transports bubble through the client.
+ * Events from the client's node, sessions, and transports bubble through this
+ * facade. Generic order remains relative to the local client endpoint.
  *
- * @template RemoteApi - The already remote-facing server root shape.
+ * @template RemoteApi - The unprojected API shape owned by the server.
  * @template LocalApi - The complete API shape owned by the client.
  */
 export interface RpcClient<
   RemoteApi extends object = Record<string, unknown>,
   LocalApi extends object = Record<string, unknown>,
 > extends EventEmitter<RpcClientEventMap<RemoteApi, LocalApi>> {
-  /** The direction-neutral node that implements this client endpoint. */
+  /** The direction-neutral node facing the server API from this client. */
   readonly node: RpcNode<RemoteApi, LocalApi>;
 
   /** The current established session, or `undefined` while disconnected. */
   readonly session: RpcConnectedSession<RemoteApi, LocalApi> | undefined;
 
   /**
-   * The current session's synchronous remote root.
+   * The current session's synchronous projection of the server root.
    *
    * @throws Before connection readiness, while disconnected, or after disposal.
    */
-  readonly root: RemoteApi;
+  readonly root: RpcRemoteRoot<RemoteApi>;
 
   /**
    * Establishes the client's first current session.

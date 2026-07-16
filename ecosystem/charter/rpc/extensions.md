@@ -36,7 +36,7 @@ Invalid input never reaches application handlers. Invalid output never reaches a
 
 ## Plugins
 
-RPC-specific hooks extend the ecosystem plugin contracts. RPC does not maintain a second plugin runner, ordering model, middleware engine, context system, or plugin error policy.
+RPC-specific hooks extend the ecosystem plugin contracts. Wire value plugins also declare how their owner-side value types project into consumer types so nested plugin values remain typed without core-contract modification. RPC does not maintain a second plugin runner, ordering model, middleware engine, context system, or plugin error policy.
 
 ## Events
 
