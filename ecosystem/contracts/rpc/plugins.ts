@@ -1,6 +1,14 @@
 import type {ApplicationError} from '../error';
 import type {HookContext, Plugin, PluginContinuation} from '../plugins';
 import type {MaybeAsync} from '../utilities';
+import type {
+  RpcBudgetUnit,
+  RpcCoreBudgetCategory,
+  RpcCoreResourceObservations,
+  RpcPluginBudget,
+  RpcPluginBudgetCategoryDescriptor,
+  RpcResourceObservation,
+} from './budgets';
 
 /** Whether session establishment requires a compatible peer wire plugin. */
 export type RpcWirePluginRequirement = 'required' | 'optional';
@@ -44,10 +52,22 @@ export interface RpcWirePluginCompatibility {
   readonly messageNamespaces: readonly string[];
 }
 
-/** Consumer-defined metadata carried by one ordinary RPC plugin object. */
-export interface RpcPluginMetadata {
+/**
+ * Consumer-defined metadata carried by one ordinary RPC plugin object.
+ *
+ * @template ResourceCategory - Plugin-local declared resource category names.
+ */
+export interface RpcPluginMetadata<ResourceCategory extends string = string> {
   /** Wire compatibility offer; omission makes the plugin local-only. */
   readonly wire?: RpcWirePluginDescriptor;
+
+  /**
+   * Finite plugin-local resource categories available during session setup.
+   *
+   * Wire-plugin categories participate in compatibility under the stable wire
+   * identity. Descriptor-free plugin categories remain local to the plugin name.
+   */
+  readonly resources?: readonly RpcPluginBudgetCategoryDescriptor<ResourceCategory>[];
 }
 
 /** Plugin-qualified semantic representation of one serialized value. */
@@ -407,8 +427,12 @@ export interface RpcSetupEndpointContext {
   readonly signal: AbortSignal;
 }
 
-/** Least-capability established-session setup input. */
-export interface RpcSetupSessionContext {
+/**
+ * Least-capability established-session setup input.
+ *
+ * @template ResourceCategory - Plugin-local declared resource category names.
+ */
+export interface RpcSetupSessionContext<ResourceCategory extends string = string> {
   /** Active immutable wire-plugin selections. */
   readonly plugins: readonly RpcWirePluginCompatibility[];
 
@@ -417,6 +441,9 @@ export interface RpcSetupSessionContext {
 
   /** Sends control traffic only through negotiated plugin namespaces. */
   readonly send: RpcPluginMessenger;
+
+  /** Reserves only this plugin's declared finite session resources. */
+  readonly budget: RpcPluginBudget<ResourceCategory>;
 }
 
 /** Scope of an RPC lifecycle observation. */
@@ -470,20 +497,49 @@ export interface RpcValueObservation {
   readonly count: number;
 }
 
-/** Resource-accounting observation without application data. */
-export interface RpcResourceObservationFact {
+/**
+ * Core resource-accounting observation without application data.
+ *
+ * Category discrimination preserves the category's exact unit and mode.
+ */
+export type RpcCoreResourceObservationFact = {
+  readonly [Category in RpcCoreBudgetCategory]: {
+    /** Observation discriminator. */
+    readonly kind: 'resource';
+
+    /** Core ownership discriminator. */
+    readonly owner: 'core';
+
+    /** Stable core resource category. */
+    readonly category: Category;
+
+    /** Immutable current use, exact unit, mode, and effective limit. */
+    readonly observation: RpcCoreResourceObservations[Category];
+  };
+}[RpcCoreBudgetCategory];
+
+/** Plugin-qualified resource-accounting observation without application data. */
+export interface RpcPluginResourceObservationFact {
   /** Observation discriminator. */
   readonly kind: 'resource';
 
-  /** Stable resource category. */
+  /** Plugin ownership discriminator. */
+  readonly owner: 'plugin';
+
+  /** Stable wire identity or local-only plugin name. */
+  readonly plugin: string;
+
+  /** Plugin-local declared resource category. */
   readonly category: string;
 
-  /** Current reservation count or size. */
-  readonly used: number;
-
-  /** Finite effective limit. */
-  readonly limit: number;
+  /** Immutable current use, unit, mode, and effective limit. */
+  readonly observation: RpcResourceObservation<RpcBudgetUnit, 'capacity'>;
 }
+
+/** Core or plugin-qualified resource-accounting observation. */
+export type RpcResourceObservationFact =
+  | RpcCoreResourceObservationFact
+  | RpcPluginResourceObservationFact;
 
 /** Value-free observation delivered to contained observer hooks. */
 export type RpcObservation =
@@ -520,8 +576,12 @@ export interface RpcDisposeEndpointContext {
  * RPC-specific lifecycle hook catalog executed by the ecosystem plugin engine.
  *
  * @template PluginName - Literal plugin name used for typed context state.
+ * @template ResourceCategory - Plugin-local declared resource category names.
  */
-export interface RpcPluginHooks<PluginName extends string = string> {
+export interface RpcPluginHooks<
+  PluginName extends string = string,
+  ResourceCategory extends string = string,
+> {
   /**
    * Matches and serializes one owner-side value.
    *
@@ -565,7 +625,10 @@ export interface RpcPluginHooks<PluginName extends string = string> {
   setupEndpoint(this: HookContext<PluginName>, context: RpcSetupEndpointContext): MaybeAsync<void>;
 
   /** Initializes negotiated session-scoped plugin state. */
-  setupSession(this: HookContext<PluginName>, context: RpcSetupSessionContext): MaybeAsync<void>;
+  setupSession(
+    this: HookContext<PluginName>,
+    context: RpcSetupSessionContext<ResourceCategory>,
+  ): MaybeAsync<void>;
 
   /** Observes a value-free fact through PluginEngine's contained strategy. */
   observe(this: HookContext<PluginName>, context: RpcObserveContext): MaybeAsync<void>;
@@ -590,9 +653,9 @@ export interface RpcPluginHooks<PluginName extends string = string> {
  * creates a compatibility-neutral local middleware or observer plugin.
  *
  * @template Name - Literal plugin name used for its persistent PluginEngine store.
+ * @template ResourceCategory - Plugin-local declared resource category names.
  */
-export type RpcPlugin<Name extends string = string> = Plugin<
-  RpcPluginHooks<Name>,
-  Name,
-  RpcPluginMetadata
->;
+export type RpcPlugin<
+  Name extends string = string,
+  ResourceCategory extends string = string,
+> = Plugin<RpcPluginHooks<Name, ResourceCategory>, Name, RpcPluginMetadata<ResourceCategory>>;

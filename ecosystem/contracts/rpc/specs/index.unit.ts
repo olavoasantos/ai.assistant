@@ -3,14 +3,18 @@ import type {
   RpcApiFragment,
   RpcClient,
   RpcClientEventMap,
-  RpcConnectedSession,
-  RpcNode,
   RpcCompatibility,
+  RpcConnectedSession,
+  RpcCoreBudgetLimits,
+  RpcNode,
   RpcRemote,
   RpcRemoteRoot,
   RpcServer,
   RpcServerEventMap,
   RpcSession,
+  RpcSessionBudgetOffer,
+  RpcSessionEstablishmentOptions,
+  RpcSessionResources,
 } from '..';
 
 interface Project {
@@ -75,6 +79,28 @@ describe('RPC endpoint projection', () => {
     expectTypeOf<Awaited<ReturnType<Client['reconnect']>>>().toEqualTypeOf<
       RpcConnectedSession<ServerApi, ClientApi>
     >();
+  });
+
+  it('accepts finite offers and exposes effective resource compatibility', () => {
+    expectTypeOf<RpcSessionEstablishmentOptions['budget']>().toEqualTypeOf<
+      RpcSessionBudgetOffer | undefined
+    >();
+    expectTypeOf<RpcCompatibility['budget']['core']>().toEqualTypeOf<RpcCoreBudgetLimits>();
+    expectTypeOf<RpcCompatibility['budget']['plugins']>().toEqualTypeOf<
+      readonly {
+        readonly plugin: string;
+        readonly categories: readonly {
+          readonly category: string;
+          readonly unit: 'bytes' | 'count' | 'depth';
+          readonly mode: 'capacity';
+          readonly limit: number;
+        }[];
+      }[]
+    >();
+    expectTypeOf<RpcSession['resources']>().toEqualTypeOf<RpcSessionResources>();
+    expectTypeOf<
+      RpcSession['resources']['core']['decode.depth']['unit']
+    >().toEqualTypeOf<'depth'>();
   });
 
   it('exposes active negotiated wire plugins in compatibility', () => {

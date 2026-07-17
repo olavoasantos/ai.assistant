@@ -1,15 +1,18 @@
 import {describe, expectTypeOf, it} from 'vitest';
 import type {PluginContainer} from '../../plugins';
 import type {
+  RpcCoreResourceObservationFact,
   RpcHydratedValue,
   RpcIncomingOperationContext,
   RpcObserveContext,
   RpcOperationOutcome,
   RpcPlugin,
   RpcPluginHooks,
+  RpcPluginResourceObservationFact,
   RpcRemote,
   RpcSerializedValue,
   RpcSerializeValueContext,
+  RpcSetupSessionContext,
   RpcWirePluginCompatibility,
 } from '..';
 
@@ -90,7 +93,7 @@ const promisePlugin: RpcPlugin<'rpc-core-promise'> = {
   },
 };
 
-const signalsPlugin: RpcPlugin<'preact-signals'> = {
+const signalsPlugin: RpcPlugin<'preact-signals', 'signals.cached' | 'updates.bytes'> = {
   name: 'preact-signals',
   wire: {
     id: 'ai.assistant.preact-signals',
@@ -98,6 +101,18 @@ const signalsPlugin: RpcPlugin<'preact-signals'> = {
     requirement: 'optional',
     valueNamespaces: ['signal'],
     messageNamespaces: ['watch', 'unwatch', 'update'],
+  },
+  resources: [
+    {category: 'signals.cached', unit: 'count', mode: 'capacity'},
+    {category: 'updates.bytes', unit: 'bytes', mode: 'capacity'},
+  ],
+  setupSession(context) {
+    const result = context.budget.reserve({
+      entries: 1,
+      categories: [{category: 'signals.cached', amount: 1}],
+    });
+    if (!result.ok) return;
+    result.reservation.release();
   },
   serializeValue(context) {
     if (
@@ -206,6 +221,70 @@ function exerciseExecutionStrategies(
   void container.observe({hook: 'observe', args: [observation]});
 }
 
+function exerciseSessionBudget(context: RpcSetupSessionContext<'state'>): void {
+  context.budget.reserve({entries: 1, categories: [{category: 'state', amount: 1}]});
+  void context.budget.resources;
+  // @ts-expect-error plugin budgets do not expose mutable core counters
+  void context.budget.core;
+  // @ts-expect-error session setup does not expose the mutable RPC session
+  void context.session;
+}
+
+function exerciseSignalsBudget(
+  context: RpcSetupSessionContext<'signals.cached' | 'updates.bytes'>,
+): void {
+  context.budget.reserve({
+    entries: 1,
+    categories: [{category: 'signals.cached', amount: 1}],
+  });
+  // @ts-expect-error setup budgets accept only declared plugin categories
+  context.budget.reserve({entries: 1, categories: [{category: 'state', amount: 1}]});
+}
+
+function inspectResourceFact(
+  fact: RpcCoreResourceObservationFact | RpcPluginResourceObservationFact,
+): void {
+  if (fact.owner === 'core') {
+    expectTypeOf(fact.category).toEqualTypeOf<
+      | 'frame.bytes'
+      | 'payload.bytes'
+      | 'decode.depth'
+      | 'decode.entries'
+      | 'calls.pending'
+      | 'notifications.pending'
+      | 'references.object.issued'
+      | 'references.object.received'
+      | 'references.function.issued'
+      | 'references.function.received'
+      | 'references.promise.issued'
+      | 'references.promise.received'
+      | 'references.stream.issued'
+      | 'references.stream.received'
+      | 'references.plugin.issued'
+      | 'references.plugin.received'
+      | 'promises.pending'
+      | 'streams.active'
+      | 'streams.buffered.items'
+      | 'streams.buffered.bytes'
+      | 'watches.active'
+      | 'updates.queued'
+      | 'transferables.active'
+      | 'plugins.messages.pending'
+      | 'plugins.state'
+    >();
+    if (fact.category === 'frame.bytes') {
+      expectTypeOf(fact.observation.unit).toEqualTypeOf<'bytes'>();
+      expectTypeOf(fact.observation.mode).toEqualTypeOf<'maximum'>();
+    }
+    // @ts-expect-error core facts have no plugin qualifier
+    void fact.plugin;
+    return;
+  }
+
+  expectTypeOf(fact.plugin).toEqualTypeOf<string>();
+  expectTypeOf(fact.category).toEqualTypeOf<string>();
+}
+
 function mutateCompatibility(selection: RpcWirePluginCompatibility): void {
   // @ts-expect-error negotiated plugin identity is immutable
   selection.id = 'changed';
@@ -264,6 +343,20 @@ describe('RPC plugin contracts', () => {
       Promise<RpcOperationOutcome>
     >();
     expectTypeOf<ReturnType<RpcPluginHooks['observe']>>().toEqualTypeOf<void | Promise<void>>();
+  });
+
+  it('scopes declared plugin resources without exposing the core ledger', () => {
+    expectTypeOf(signalsPlugin.resources).toEqualTypeOf<
+      | readonly {
+          readonly category: 'signals.cached' | 'updates.bytes';
+          readonly unit: 'bytes' | 'count' | 'depth';
+          readonly mode: 'capacity';
+        }[]
+      | undefined
+    >();
+    expectTypeOf(exerciseSessionBudget).toBeFunction();
+    expectTypeOf(exerciseSignalsBudget).toBeFunction();
+    expectTypeOf(inspectResourceFact).toBeFunction();
   });
 
   it('keeps negotiated compatibility observations immutable', () => {

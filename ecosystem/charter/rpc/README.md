@@ -102,9 +102,9 @@ RPC automatically installs core remote-value behavior as ordinary mandatory plug
 
 ### Session Budget
 
-Every session has one finite resource budget. The budget accounts for all resource-bearing protocol and plugin behavior, including frames, decoded structures, pending work, remote references, streams, buffering, watches, updates, transferables, and plugin-owned state.
+Every session has one finite resource budget negotiated before root delivery. Core categories have stable names, units, and accounting modes covering per-operation maxima and concurrent or retained capacity. Plugin protocol resources compose under aggregate core plugin limits and plugin-qualified sub-budgets.
 
-A budget is an authority boundary as well as an operational limit: one session cannot reserve, release, or observe another session’s allocation.
+A budget is an authority boundary as well as an operational limit. Reservations are atomic, session-bound leases acquired before resource-bearing state or authority commits. Public consumers receive immutable observations; only least-capability session internals and scoped plugin capabilities may reserve or release capacity. One session cannot mutate or observe another session’s allocation.
 
 ## Foundational Invariants
 
@@ -115,7 +115,7 @@ A budget is an authority boundary as well as an operational limit: one session c
 - Timeout and cancellation do not imply rollback or prove that owner-side effects did not occur.
 - Disconnect invalidates session authority and settles or cleans up all session work. Reconnection creates a new session.
 - Every accepted session has finite limits, including trusted and in-process sessions.
-- Plugins cannot bypass core authority, validation, resource, or cleanup guarantees.
+- Host-mediated plugin behavior cannot bypass core authority, validation, resource, or cleanup guarantees.
 - Garbage-collection finalization is a release optimization and is never required for correctness or bounded resource use.
 
 ## Constraints
@@ -136,6 +136,8 @@ The initial RPC foundation does not include:
 - bundled collection codecs beyond values required by the platform;
 - automatic retry or exactly-once execution;
 - transaction or rollback semantics;
-- compatibility with predecessor public APIs or wire formats.
+- compatibility with predecessor public APIs or wire formats;
+- endpoint-wide admission quotas, sustained-traffic rate limiting, or scheduler fairness;
+- process isolation for untrusted in-process plugins.
 
 Deferred capabilities require explicit charter and contract changes before becoming supported behavior.

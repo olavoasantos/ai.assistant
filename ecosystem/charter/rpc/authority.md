@@ -7,6 +7,10 @@ This document is part of the normative [RPC charter](./README.md).
 - RPC sends no frames before the application admits a transport.
 - Admission means the application has completed its required authentication, origin, remote identity, and deployment checks outside RPC.
 - After admission, the local and remote nodes establish protocol, transport-representation, required wire-plugin, remote-value, and finite-budget compatibility before application traffic begins.
+- Each node offers a complete finite set of core limits and any active wire-plugin limits. Effective limits are conservative intersections of peer offers and local policy, are immutable for the session, and use non-negative safe integers; zero explicitly disables a category.
+- Missing required categories, duplicate or unknown plugin categories, incompatible units or accounting modes, and negative, fractional, non-finite, or unsafe integer limits reject establishment.
+- Omitted application budget configuration selects finite implementation defaults. No transport representation, trust level, or in-process deployment creates an implicit unbounded offer.
+- Negotiation itself is subject to finite local bootstrap limits for frame size, nesting, collections, strings, plugin descriptors, and budget categories. Peer offers cannot raise those pre-session bounds.
 - Wire plugins identify themselves with stable plugin identifiers and ordered opaque protocol identifiers. Package versions and semver predicates are not negotiated compatibility.
 - A missing or protocol-incompatible required wire plugin rejects establishment. An optional plugin activates only when both peers offer it and share a protocol identifier.
 - Active plugin value and message namespaces are qualified by plugin identity, remain distinct from core namespaces, and are fixed with the selected protocol for the session.
@@ -44,9 +48,10 @@ This document is part of the normative [RPC charter](./README.md).
 
 - Application admission does not make a remote node or its frames trustworthy.
 - Canonical messages are structurally validated before hydration, plugin dispatch, correlation, or application invocation.
-- Frame size, strings, collections, identifiers, nesting, and plugin payloads are bounded before expensive work where possible.
+- Complete frame cost, semantic payload cost, strings, collections, identifiers, nesting, traversal, and plugin payloads are bounded before expensive work where possible.
 - Traversal does not invoke constructors, getters, prototype setters, or application behavior merely to inspect a value.
 - Prototype-polluting and unsafe property names are rejected consistently.
-- Raw structured-clone values and string-decoded values converge to the same validated canonical model.
+- Raw structured-clone values and string-decoded values converge to the same validated canonical model while retaining representation-appropriate conservative cost accounting.
 - Transfer lists cannot smuggle application authority or bypass message validation.
 - Malformed input has a defined operation-level or session-terminal outcome and cannot leave partially committed authority or resources.
+- Structural maxima, flow-control violations, impossible accounting transitions, and input that cannot be isolated safely terminate the offending session rather than attempting uncertain continuation.

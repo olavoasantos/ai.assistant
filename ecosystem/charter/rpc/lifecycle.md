@@ -18,7 +18,8 @@ This document is part of the normative [RPC charter](./README.md).
 - Transport closure emits one typed closure event and settles one closure promise. Nonterminal transport failures emit typed error events.
 - Transport closure, liveness failure, or explicit disconnect ends the current session.
 - A publicly established session starts active, transitions through disposing during teardown, and ends disposed. Establishing and resumable-inactive sessions are not public states.
-- Session termination rejects pending calls and promises, cancels active work and streams, removes watches, detaches transport listeners, invokes every session-scoped plugin cleanup path, disposes session plugin state, invalidates authority, and releases budget.
+- Session termination stops ingress and new reservations, rejects pending calls and promises, cancels active work and streams, removes watches, detaches transport listeners, invalidates authority, and invokes every session-scoped plugin cleanup path with contained failures.
+- Core teardown force-releases every host-tracked session and plugin lease independently of plugin cooperation. The closure promise settles only after session resource observations reach zero.
 - Session disconnect is idempotent and converges with simultaneous transport closure or endpoint disposal without duplicate cleanup.
 - Late frames from a terminated session have no effect on a later session.
 - Reconnection creates a freshly admitted and negotiated session. Pending work and wire authority do not resume implicitly.
@@ -50,11 +51,15 @@ This document is part of the normative [RPC charter](./README.md).
 
 ## Finite Resources
 
-- Every accepted session has finite effective limits. Trusted, local, and in-process transports do not create an unbounded mode.
-- Resource-bearing operations reserve capacity before committing state and release it on settlement or cleanup.
-- Failed or cancelled operations roll back partial reservations.
-- Budget categories include representation size, decoded depth and collections, calls, notifications, references by kind, promises, streams, buffered items and bytes, watches, updates, transferables, and plugin state where applicable.
-- Representation-specific accounting may be conservative rather than exact, but its units and behavior are stable and documented.
-- Budget exhaustion rejects the operation or terminates the session according to severity without compromising other sessions.
-- Usage cannot become negative, exceed negotiated limits, or be released by another session.
-- Session teardown releases every reservation deterministically.
+- Every accepted session has immutable finite effective limits. Trusted, local, and in-process transports do not create an unbounded mode.
+- Core categories have stable units of bytes, count, or depth. A maximum limits one frame or value graph without accumulating across independent operations; a capacity limits concurrently active, queued, or retained state through releasable leases. Plugin sub-budgets reserve capacity only; core categories enforce plugin frame, payload, and decode maxima.
+- Core categories cover complete frame and semantic payload bytes, decoded depth and entries, pending calls and notifications, issued and received references by value kind, pending promises, active streams, buffered stream items and bytes, watches, queued updates, transferables, pending plugin messages, and aggregate plugin state.
+- Resource-bearing operations acquire all required capacity atomically before allocating externally influenced state, dispatching work, issuing authority, or making a mutation visible. A failed acquisition changes no usage.
+- Reservations are opaque session-bound leases. Release is idempotent, cannot reduce usage below zero, and cannot affect another or later session.
+- Serialization, validation, middleware, send, transfer, and plugin-setup failure release every prepared reservation. Partial multi-category acquisition never remains committed.
+- Cancellation releases prepared work immediately. Capacity for already dispatched application or plugin work remains reserved until that work actually settles or terminal teardown reclaims its session bookkeeping; caller settlement alone does not prove execution stopped.
+- String representation cost uses encoded bytes or a documented conservative upper bound. Raw representation cost uses a documented side-effect-free structural rule that includes traversed entries, strings, binary backing sizes, and transferables; JSON serialization is not a raw-size estimator.
+- Byte accounting never replaces independent depth and decoded-entry maxima. Conservative accounting may overcharge but must not omit framing, plugin qualification, or representation-owned payload overhead.
+- Recoverable local or peer pressure rejects the affected operation without committing authority or state. A terminal exhaustion result means RPC has already begun host-owned teardown. Structural-limit, flow-control, namespace, malformed-input, or accounting-integrity violations terminate the offending session when safe isolated continuation is not possible.
+- Session-fatal exhaustion does not mutate another session's ledger. Per-session limits alone do not guarantee endpoint-wide memory, admission, scheduling, or sustained-traffic isolation.
+- Session teardown releases every reservation deterministically and reaches zero in every category before closure completes.

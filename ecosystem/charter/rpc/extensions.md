@@ -15,13 +15,18 @@ This document is part of the normative [RPC charter](./README.md).
 - Core remote-value behavior is installed as ordinary mandatory plugins. Active core and negotiated wire plugin objects are protected from removal for the session while descriptor-free local plugins remain mutable.
 - Endpoint setup runs once before a plugin participates in endpoint work. Negotiated session setup completes before root delivery; setup failure of an active required plugin rejects establishment.
 - A descriptor-free plugin added to an active session completes session setup before becoming eligible for execution. Removing it invokes session cleanup before PluginEngine membership removal.
-- Session cleanup and endpoint cleanup are distinct hooks with distinct least-capability contexts. Cleanup is attempted for every initialized plugin even when another plugin's cleanup fails.
+- Session setup gives each plugin a scoped budget capability for only its declared, finite, plugin-qualified capacity categories. Plugins reserve atomically through that capability and cannot mutate the core ledger or another plugin's allocation. Per-frame and per-graph plugin maxima remain enforced through core frame, payload, and decode categories.
+- Each successful plugin-state lease declares a positive aggregate entry count. RPC charges that count to core plugin-state capacity atomically with every named plugin sub-budget; declaring more categories cannot create unbounded aggregate capacity. Plugin control traffic is charged automatically to core plugin-message capacity.
+- Invalid local reservation requests, including undeclared or duplicate categories and invalid amounts, fail without mutating usage. Capacity exhaustion either rejects the operation without mutation or reports that RPC has already begun host-owned session teardown.
+- Session cleanup and endpoint cleanup are distinct hooks with distinct least-capability contexts. Cleanup is attempted for every initialized plugin even when another plugin's cleanup fails, and core teardown reclaims host-tracked plugin reservations independently.
+- In-process plugins are trusted code for private CPU, memory, timers, and references that they allocate outside host capabilities. Supporting hostile plugin code requires runtime isolation and does not weaken accounting for host-mediated frames, values, messages, or state.
 
 ## Observation and Telemetry
 
 - Public lifecycle and diagnostic events use the ecosystem event model.
 - Event and observer payloads exclude credentials, application arguments, results, stream items, reactive values, and raw frames by default. They may include opaque local correlation, kinds, counts, sizes, durations, outcome classifications, and normalized errors.
 - RPC observation hooks use PluginEngine's contained observation strategy. A fatal observer failure may stop remaining observers and produce diagnostics, but cannot change protocol progress, operation settlement, authority, resource release, or cleanup.
+- Resource observations identify core or plugin ownership, stable category, unit, accounting mode, current use, and effective limit without exposing reservation or release authority.
 - Plugins that need to inspect or affect application values must install explicit middleware and thereby participate in operation outcomes.
 - High-volume frame, item, and update observations are aggregated or opt-in.
 - RPC endpoints accept optional telemetry and create a correctly scoped default when none is supplied.

@@ -1,5 +1,10 @@
 import type {ApplicationError} from '../error';
 import type {EventEmitter} from '../events';
+import type {
+  RpcSessionBudgetCompatibility,
+  RpcSessionBudgetOffer,
+  RpcSessionResources,
+} from './budgets';
 import type {RpcWirePluginCompatibility} from './plugins';
 import type {
   RpcCallback,
@@ -19,6 +24,7 @@ import type {
   RpcValueProjections,
 } from './values';
 
+export type * from './budgets';
 export type * from './plugins';
 
 export type {
@@ -221,6 +227,14 @@ export interface RpcSessionEstablishmentOptions {
    * @defaultValue 'caller'
    */
   readonly ownership?: RpcTransportOwnership;
+
+  /**
+   * Finite local resource limits offered for the new session.
+   *
+   * Omission selects implementation-defined finite defaults. It never selects
+   * an unbounded mode, including for trusted or in-process transports.
+   */
+  readonly budget?: RpcSessionBudgetOffer;
 }
 
 /** Immutable compatibility established for one RPC session. */
@@ -233,24 +247,10 @@ export interface RpcCompatibility {
 
   /** Immutable active wire-plugin selections for this session. */
   readonly plugins: readonly RpcWirePluginCompatibility[];
+
+  /** Immutable effective core and wire-plugin resource limits. */
+  readonly budget: RpcSessionBudgetCompatibility;
 }
-
-/** Immutable usage and limit values for one session resource category. */
-export interface RpcResourceObservation {
-  /** The amount currently reserved by the session. */
-  readonly used: number;
-
-  /** The finite maximum available to the session. */
-  readonly limit: number;
-}
-
-/**
- * Immutable resource observations keyed by implementation-defined category.
- *
- * Category names are intentionally implementation-defined while each value
- * follows the same stable observation shape.
- */
-export type RpcSessionResources = Readonly<Record<string, RpcResourceObservation>>;
 
 /** Aggregate authority observations for one session. */
 export interface RpcSessionAuthority {
