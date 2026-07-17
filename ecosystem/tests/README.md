@@ -25,6 +25,19 @@ Ecosystem compliance tests and utilities.
 pnpm install @ai.assistant/tests
 ```
 
+Source implementations register shared compliance from an integration test:
+
+```ts
+import {runRpcComplianceTests} from '@ai.assistant/tests/rpc';
+import {rpcComplianceFactories} from './testing/rpcComplianceFactories';
+
+runRpcComplianceTests(rpcComplianceFactories);
+```
+
+RPC factories provide public endpoints plus deterministic, source-neutral test
+capabilities. Exact framing, canonical vectors, and environment transports stay
+in the source package's own tests.
+
 ## Contributors
 
 - [Olavo Amorim Santos](https://github.com/olavoasantos)

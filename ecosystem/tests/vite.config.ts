@@ -20,6 +20,7 @@ export default defineConfig({
         'helpers/index': 'helpers/index.ts',
         'intents/index': 'intents/index.ts',
         'plugins/index': 'plugins/index.ts',
+        'rpc/index': 'rpc/index.ts',
         'service-container/index': 'service-container/index.ts',
         'telemetry/index': 'telemetry/index.ts',
         'validation/index': 'validation/index.ts',
