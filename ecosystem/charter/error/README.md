@@ -10,6 +10,7 @@ A structured error primitive for the entire platform. Any thrown value anywhere 
 - A normalization boundary: unknown caught values go in, `ApplicationError` comes out.
 - An aggregation container: collects child issues from parallel or sequential operations.
 - A serialization target: converts to depth-controlled JSON for logging, transport, and display.
+- A deserialization boundary: reconstructs serialized errors without trusting remote objects, prototypes, or references.
 
 ## What It Is Not
 
@@ -47,6 +48,17 @@ A structured error primitive for the entire platform. Any thrown value anywhere 
 - Stack traces are excluded by default. Opt-in via `{ includeStack: true }`.
 - Depth is bounded. Prevents infinite recursion in deep cause chains or circular-like nesting.
 - Optional fields (`reference`, `issues`, `cause`, `stack`) are omitted from output when absent — no `null` noise.
+
+### Deserialization
+
+- Canonical deserialization accepts untrusted serialized input and returns a new symbol-branded `ApplicationError`.
+- Message, code, severity, reference, JSON-compatible metadata, timestamp, issues, and causes are reconstructed from valid serialized fields. Unknown fields do not become properties on the error.
+- Materialized serialized records are read only through their own data properties. Inherited values and custom prototypes are rejected; accessors on consumed fields are rejected without invoking ordinary getters.
+- Metadata, issue paths, issues, and causes are rebuilt into fresh structures. Mutating the input after deserialization cannot mutate the reconstructed error.
+- Cause and issue traversal has an independent finite depth. Cycles encountered within that traversal are rejected; deeper values are omitted without traversal.
+- A reconstructed error has no stack unless the serialized input contains an explicit stack.
+- Malformed input is rejected as a fresh `ApplicationError` that retains no reference to the rejected value.
+- A leaf issue cause containing only message and optional stack reconstructs as a native `Error`; without a discriminator it is structurally indistinguishable from a minimal `ErrorIssue`.
 
 ## Extensibility
 

@@ -1,8 +1,9 @@
 import type * as Contract from '@ai.assistant/contracts/error';
 import {RecordGuard} from '../guards/RecordGuard';
-import {APPLICATION_ERROR_IDENTIFIER} from '../constants';
+import {APPLICATION_ERROR_IDENTIFIER, DEFAULT_ERROR_DESERIALIZATION_DEPTH} from '../constants';
 import {ApplicationErrorGuard} from '../guards/ApplicationErrorGuard';
 import {ErrorIssue} from './ErrorIssue';
+import {SerializedErrorParser} from './SerializedErrorParser';
 
 /**
  * A structured error class used throughout the platform.
@@ -22,6 +23,8 @@ import {ErrorIssue} from './ErrorIssue';
  *   into a consistent `ApplicationError`. Always creates a new instance.
  * - **Serialization** via {@link ApplicationError.toJSON} — depth-controlled JSON output with
  *   optional stack traces.
+ * - **Deserialization** via {@link ApplicationError.fromJSON} — strict reconstruction from
+ *   untrusted serialized data without retaining remote object references.
  *
  * Uses a Symbol brand for identification, making it reliable across module boundaries,
  * package versions, and realms.
@@ -114,6 +117,30 @@ export class ApplicationError extends Error implements Contract.ApplicationError
   }
 
   /**
+   * Reconstructs a fresh `ApplicationError` from untrusted serialized data.
+   *
+   * Only own data properties on ordinary records are accepted. Metadata,
+   * issue paths, issues, and causes are rebuilt into fresh structures, and
+   * nested error traversal is bounded independently from serialization.
+   *
+   * @param value - Serialized error data to reconstruct.
+   * @param options - Controls the maximum reconstructed issue and cause depth.
+   * @returns A fresh symbol-branded `ApplicationError`.
+   * @throws A safe `ApplicationError` when the serialized value is malformed.
+   *
+   * @example
+   * ```ts
+   * const error = ApplicationError.fromJSON(receivedError);
+   * ```
+   */
+  static fromJSON(
+    value: unknown,
+    {depth = DEFAULT_ERROR_DESERIALIZATION_DEPTH}: Contract.ErrorDeserializerOptions = {},
+  ): ApplicationError {
+    return new SerializedErrorParser(ApplicationError, ErrorIssue, depth).parse(value);
+  }
+
+  /**
    * Numeric error code using HTTP status code values as a widely-known convention.
    * Mutable via {@link ApplicationError.set} or {@link ApplicationError.setMany}.
    */
@@ -193,7 +220,12 @@ export class ApplicationError extends Error implements Contract.ApplicationError
     this.severity = options.severity ?? 'recoverable';
     this.reference = options.reference;
     this.metadata = options.metadata ?? {};
-    this.timestamp = new Date().toISOString();
+    this.timestamp = options.timestamp ?? new Date().toISOString();
+    Object.defineProperty(this, 'timestamp', {
+      configurable: false,
+      enumerable: true,
+      writable: false,
+    });
   }
 
   /**

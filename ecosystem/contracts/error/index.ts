@@ -49,6 +49,13 @@ export interface ErrorOptions {
   readonly metadata?: ErrorMetadata;
 
   /**
+   * Known ISO 8601 creation timestamp to preserve during reconstruction.
+   *
+   * @defaultValue The current time.
+   */
+  readonly timestamp?: Timestamp;
+
+  /**
    * The underlying cause of this error, aligned with the ES2022
    * `Error.cause` convention.
    */
@@ -112,6 +119,19 @@ export interface ErrorSerializerOptions {
 }
 
 /**
+ * Options controlling reconstruction of a serialized application error.
+ */
+export interface ErrorDeserializerOptions {
+  /**
+   * Maximum depth for reconstructing nested issues and causes.
+   * Values at greater depths are omitted.
+   *
+   * @defaultValue 5
+   */
+  readonly depth?: number;
+}
+
+/**
  * JSON-serializable representation of an {@link ErrorIssue}.
  */
 export interface SerializedErrorIssue {
@@ -119,7 +139,14 @@ export interface SerializedErrorIssue {
   readonly message: string;
   /** Path to the value that caused the issue. */
   readonly path?: readonly PropertyKey[];
-  /** Serialized cause, if any. */
+  /**
+   * Serialized cause, if any.
+   *
+   * A cause containing error-specific fields reconstructs as an application
+   * error. A cause containing a path or nested cause reconstructs as an error
+   * issue. A leaf containing only message and optional stack reconstructs as
+   * a native error because those two source shapes are structurally identical.
+   */
   readonly cause?: SerializedError | SerializedErrorIssue;
   /** Stack trace, included only when requested via serializer options. */
   readonly stack?: string;
@@ -152,6 +179,18 @@ export interface SerializedError {
   /** Serialized cause, if any. */
   readonly cause?: SerializedError;
 }
+
+/**
+ * Reconstructs a fresh application error from an untrusted serialized value.
+ *
+ * Implementations reject malformed values, including metadata and paths that
+ * have not survived a JSON-compatible transport boundary, and never retain
+ * mutable input structures or prototype-derived fields.
+ */
+export type ErrorDeserializer = (
+  value: unknown,
+  options?: ErrorDeserializerOptions,
+) => ApplicationError;
 
 /**
  * A lightweight issue representing a sub-problem within an

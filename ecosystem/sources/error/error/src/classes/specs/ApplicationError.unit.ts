@@ -56,6 +56,18 @@ describe('ApplicationError', () => {
       expect(error.timestamp <= after).toBe(true);
     });
 
+    it('should expose timestamp as runtime read-only', () => {
+      const error = new ApplicationError('test');
+
+      expect(() => {
+        (error as {timestamp: string}).timestamp = '2026-07-17T10:00:00.000Z';
+      }).toThrow(TypeError);
+      expect(Object.getOwnPropertyDescriptor(error, 'timestamp')).toMatchObject({
+        configurable: false,
+        writable: false,
+      });
+    });
+
     it('should be an instance of Error', () => {
       const error = new ApplicationError('test');
       expect(error).toBeInstanceOf(Error);
@@ -345,6 +357,76 @@ describe('ApplicationError', () => {
       expect(json.cause?.message).toBe('level-2');
       expect(json.cause?.cause?.message).toBe('level-3');
       expect(json.cause?.cause?.cause).toBeUndefined();
+    });
+  });
+
+  describe('fromJSON', () => {
+    it('should round-trip every serialized field into fresh structures', () => {
+      const cause = new ApplicationError({
+        message: 'inner',
+        code: 503,
+        severity: 'fatal',
+        metadata: {region: 'local'},
+      });
+      const original = new ApplicationError({
+        message: 'outer',
+        code: 409,
+        severity: 'recoverable',
+        reference: 'operation:1',
+        metadata: {request: {id: 'request:1', tags: ['rpc']}},
+        cause,
+      });
+      original.add(new ErrorIssue({message: 'issue', path: ['input', 0]}));
+      const serialized = original.toJSON({includeStack: true});
+
+      const reconstructed = ApplicationError.fromJSON(serialized);
+
+      expect(reconstructed).not.toBe(original);
+      expect(reconstructed).toBeInstanceOf(ApplicationError);
+      expect(reconstructed).toMatchObject({
+        message: 'outer',
+        code: 409,
+        severity: 'recoverable',
+        reference: 'operation:1',
+        metadata: {request: {id: 'request:1', tags: ['rpc']}},
+        timestamp: original.timestamp,
+        stack: serialized.stack,
+      });
+      expect(reconstructed.metadata).not.toBe(original.metadata);
+      expect(reconstructed.issues[0]).toMatchObject({message: 'issue', path: ['input', 0]});
+      expect(reconstructed.cause).toMatchObject({
+        message: 'inner',
+        code: 503,
+        severity: 'fatal',
+        metadata: {region: 'local'},
+        timestamp: cause.timestamp,
+      });
+      expect(reconstructed[APPLICATION_ERROR_IDENTIFIER]).toBe(true);
+    });
+
+    it('should not synthesize a stack absent from serialized input', () => {
+      const reconstructed = ApplicationError.fromJSON({
+        message: 'remote',
+        code: 500,
+        severity: 'recoverable',
+        metadata: {},
+        timestamp: '2026-07-17T10:00:00.000Z',
+      });
+
+      expect(reconstructed.stack).toBeUndefined();
+    });
+
+    it('should reject malformed input without retaining it', () => {
+      const malformed = {message: 'remote'};
+
+      try {
+        ApplicationError.fromJSON(malformed);
+        expect.unreachable('Expected malformed input to be rejected');
+      } catch (error) {
+        expect(error).toBeInstanceOf(ApplicationError);
+        expect((error as ApplicationError).cause).toBeUndefined();
+        expect((error as ApplicationError).metadata).toEqual({});
+      }
     });
   });
 

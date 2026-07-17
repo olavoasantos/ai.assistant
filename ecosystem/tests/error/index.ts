@@ -1,4 +1,4 @@
-import {describe, expect, it} from 'vitest';
+import {describe, expect, it, vi} from 'vitest';
 import type * as Contract from '@ai.assistant/contracts/error';
 
 /**
@@ -24,6 +24,9 @@ export interface ErrorComplianceTestSuite {
   normalizeIssue?: (
     value: Error | Contract.ErrorIssue,
   ) => Contract.ErrorIssue | Promise<Contract.ErrorIssue>;
+
+  /** Reconstructs an application error from untrusted serialized data. */
+  deserializeError: Contract.ErrorDeserializer;
 }
 
 /**
@@ -31,7 +34,7 @@ export interface ErrorComplianceTestSuite {
  *
  * The suite asserts the public contract and implementation-agnostic charter for
  * structured errors: defaults, mutation semantics, aggregation, serialization,
- * and optional normalization behaviour.
+ * and optional normalization and deserialization behaviour.
  */
 export function runErrorComplianceTests(factories: ErrorComplianceTestSuite): void {
   describe('error compliance', () => {
@@ -58,6 +61,7 @@ export function runErrorComplianceTests(factories: ErrorComplianceTestSuite): vo
           severity: 'fatal',
           reference: 'user:1234',
           metadata: {userId: '1234'},
+          timestamp: '2026-07-17T10:00:00.000Z',
           cause,
         });
 
@@ -66,6 +70,14 @@ export function runErrorComplianceTests(factories: ErrorComplianceTestSuite): vo
         expect(error.severity).toBe('fatal');
         expect(error.reference).toBe('user:1234');
         expect(error.metadata).toEqual({userId: '1234'});
+        expect(error.timestamp).toBe('2026-07-17T10:00:00.000Z');
+        expect(
+          Reflect.set(
+            error as unknown as Record<string, unknown>,
+            'timestamp',
+            '2026-07-17T11:00:00.000Z',
+          ),
+        ).toBe(false);
         expect(error.cause).toBe(cause);
       });
 
@@ -141,6 +153,236 @@ export function runErrorComplianceTests(factories: ErrorComplianceTestSuite): vo
         expect(withStack.issues?.[0].message).toBe('issue');
         expect(withoutDepth.cause).toBeUndefined();
         expect(withoutDepth.issues).toBeUndefined();
+      });
+    });
+
+    const deserializeError = factories.deserializeError;
+
+    describe('ApplicationError deserialization', () => {
+      it('reconstructs every serialized field with structured identity', () => {
+        const serialized: Contract.SerializedError = {
+          message: 'Remote failure',
+          code: 409,
+          severity: 'fatal',
+          reference: 'operation:42',
+          metadata: {request: {id: 'request:1', tags: ['rpc']}},
+          timestamp: '2026-07-17T10:00:00.000Z',
+          issues: [
+            {
+              message: 'Invalid argument',
+              path: ['input', 0],
+              cause: {message: 'Expected a string', stack: 'remote issue stack'},
+            },
+          ],
+          cause: {
+            message: 'Storage conflict',
+            code: 503,
+            severity: 'recoverable',
+            metadata: {region: 'local'},
+            timestamp: '2026-07-17T09:59:59.000Z',
+          },
+        };
+
+        const error = deserializeError(serialized);
+        const cause = error.cause as Contract.ApplicationError;
+
+        expect(error.message).toBe('Remote failure');
+        expect(error.code).toBe(409);
+        expect(error.severity).toBe('fatal');
+        expect(error.reference).toBe('operation:42');
+        expect(error.metadata).toEqual({request: {id: 'request:1', tags: ['rpc']}});
+        expect(error.timestamp).toBe('2026-07-17T10:00:00.000Z');
+        expect(error.issues).toHaveLength(1);
+        expect(error.issues[0]).toMatchObject({
+          message: 'Invalid argument',
+          path: ['input', 0],
+        });
+        expect((error.issues[0].cause as Error).message).toBe('Expected a string');
+        expect((error.issues[0].cause as Error).stack).toBe('remote issue stack');
+        expect(cause).toMatchObject({
+          message: 'Storage conflict',
+          code: 503,
+          severity: 'recoverable',
+          metadata: {region: 'local'},
+          timestamp: '2026-07-17T09:59:59.000Z',
+        });
+        expect(
+          (error as unknown as Record<symbol, unknown>)[
+            Symbol.for('ai.assistant:ApplicationError')
+          ],
+        ).toBe(true);
+      });
+
+      it('retains stacks only when they were explicitly serialized', () => {
+        const withoutStack = deserializeError({
+          message: 'No stack',
+          code: 500,
+          severity: 'recoverable',
+          metadata: {},
+          timestamp: '2026-07-17T10:00:00.000Z',
+        });
+        const withStack = deserializeError({
+          message: 'With stack',
+          code: 500,
+          severity: 'recoverable',
+          metadata: {},
+          timestamp: '2026-07-17T10:00:00.000Z',
+          stack: 'remote application stack',
+        });
+
+        expect(withoutStack.stack).toBeUndefined();
+        expect(withStack.stack).toBe('remote application stack');
+      });
+
+      it('truncates issues and causes at the configured depth', () => {
+        const serialized: Contract.SerializedError = {
+          message: 'Outer',
+          code: 500,
+          severity: 'recoverable',
+          metadata: {},
+          timestamp: '2026-07-17T10:00:00.000Z',
+          issues: [{message: 'Issue', cause: {message: 'Issue cause'}}],
+          cause: {
+            message: 'Middle',
+            code: 500,
+            severity: 'recoverable',
+            metadata: {},
+            timestamp: '2026-07-17T09:59:59.000Z',
+            cause: {
+              message: 'Inner',
+              code: 500,
+              severity: 'recoverable',
+              metadata: {},
+              timestamp: '2026-07-17T09:59:58.000Z',
+            },
+          },
+        };
+
+        const error = deserializeError(serialized, {depth: 1});
+        const cause = error.cause as Contract.ApplicationError;
+
+        expect(error.issues).toHaveLength(1);
+        expect(error.issues[0].cause).toBeUndefined();
+        expect(cause.message).toBe('Middle');
+        expect(cause.cause).toBeUndefined();
+      });
+
+      it('omits values beyond the configured depth without inspecting them', () => {
+        const readCause = vi.fn(() => ({message: 'unreachable'}));
+        const serialized: Record<string, unknown> = {
+          message: 'Truncated',
+          code: 500,
+          severity: 'recoverable',
+          metadata: {},
+          timestamp: '2026-07-17T10:00:00.000Z',
+          issues: 42,
+        };
+        Object.defineProperty(serialized, 'cause', {enumerable: true, get: readCause});
+
+        const error = deserializeError(serialized, {depth: 0});
+
+        expect(error.issues).toEqual([]);
+        expect(error.cause).toBeUndefined();
+        expect(readCause).not.toHaveBeenCalled();
+      });
+
+      it('does not retain mutable metadata or path references', () => {
+        const tags = ['rpc'];
+        const request = {id: 'request:1', tags};
+        const metadata = {request};
+        const path: Array<string | number> = ['input', 0];
+        const serialized = {
+          message: 'Detached',
+          code: 400,
+          severity: 'recoverable',
+          metadata,
+          timestamp: '2026-07-17T10:00:00.000Z',
+          issues: [{message: 'Issue', path}],
+        };
+
+        const error = deserializeError(serialized);
+
+        request.id = 'changed';
+        tags.push('mutated');
+        path[0] = 'changed';
+
+        expect(error.metadata).toEqual({request: {id: 'request:1', tags: ['rpc']}});
+        expect(error.issues[0].path).toEqual(['input', 0]);
+      });
+
+      it('rejects malformed and cyclic serialized values safely', async () => {
+        const cyclic: Record<string, unknown> = {
+          message: 'Cyclic',
+          code: 500,
+          severity: 'recoverable',
+          metadata: {},
+          timestamp: '2026-07-17T10:00:00.000Z',
+        };
+        cyclic.cause = cyclic;
+
+        await expect(
+          Promise.resolve().then(() =>
+            deserializeError({
+              message: 'Wrong code',
+              code: '500',
+              severity: 'recoverable',
+              metadata: {},
+              timestamp: '2026-07-17T10:00:00.000Z',
+            }),
+          ),
+        ).rejects.toMatchObject({
+          [Symbol.for('ai.assistant:ApplicationError')]: true,
+        });
+        await expect(
+          Promise.resolve().then(() =>
+            deserializeError({
+              message: 'Impossible date',
+              code: 500,
+              severity: 'recoverable',
+              metadata: {},
+              timestamp: '2026-02-29T10:00:00Z',
+            }),
+          ),
+        ).rejects.toMatchObject({
+          [Symbol.for('ai.assistant:ApplicationError')]: true,
+        });
+        await expect(Promise.resolve().then(() => deserializeError(cyclic))).rejects.toMatchObject({
+          [Symbol.for('ai.assistant:ApplicationError')]: true,
+        });
+        await expect(
+          Promise.resolve().then(() => deserializeError(cyclic, {depth: Number.POSITIVE_INFINITY})),
+        ).rejects.toMatchObject({
+          [Symbol.for('ai.assistant:ApplicationError')]: true,
+        });
+      });
+
+      it('rejects custom prototypes and accessors without invoking them', async () => {
+        const readMessage = vi.fn(() => 'Accessor');
+        const accessorValue: Record<string, unknown> = {
+          code: 500,
+          severity: 'recoverable',
+          metadata: {},
+          timestamp: '2026-07-17T10:00:00.000Z',
+        };
+        Object.defineProperty(accessorValue, 'message', {
+          enumerable: true,
+          get: readMessage,
+        });
+        const customPrototypeValue = Object.assign(Object.create({inherited: true}), {
+          message: 'Custom prototype',
+          code: 500,
+          severity: 'recoverable',
+          metadata: {},
+          timestamp: '2026-07-17T10:00:00.000Z',
+        });
+
+        await expect(
+          Promise.resolve().then(() => deserializeError(accessorValue)),
+        ).rejects.toBeDefined();
+        await expect(
+          Promise.resolve().then(() => deserializeError(customPrototypeValue)),
+        ).rejects.toBeDefined();
+        expect(readMessage).not.toHaveBeenCalled();
       });
     });
 

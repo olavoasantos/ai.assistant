@@ -6,4 +6,5 @@ runErrorComplianceTests({
   ErrorIssue: async (options) => new ErrorIssue(options),
   normalizeError: async (value) => ApplicationError.from(value),
   normalizeIssue: async (value) => ErrorIssue.from(value),
+  deserializeError: (value, options) => ApplicationError.fromJSON(value, options),
 });
