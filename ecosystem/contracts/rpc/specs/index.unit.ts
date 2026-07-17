@@ -5,6 +5,7 @@ import type {
   RpcClientEventMap,
   RpcConnectedSession,
   RpcNode,
+  RpcCompatibility,
   RpcRemote,
   RpcRemoteRoot,
   RpcServer,
@@ -73,6 +74,17 @@ describe('RPC endpoint projection', () => {
     >();
     expectTypeOf<Awaited<ReturnType<Client['reconnect']>>>().toEqualTypeOf<
       RpcConnectedSession<ServerApi, ClientApi>
+    >();
+  });
+
+  it('exposes active negotiated wire plugins in compatibility', () => {
+    expectTypeOf<RpcCompatibility['plugins']>().toEqualTypeOf<
+      readonly {
+        readonly id: string;
+        readonly protocol: string;
+        readonly valueNamespaces: readonly string[];
+        readonly messageNamespaces: readonly string[];
+      }[]
     >();
   });
 

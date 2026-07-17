@@ -40,8 +40,19 @@ export type HookOrder = 'pre' | 'post';
  * - `'first'` — handlers run in order, first non-null result wins.
  * - `'reduce'` — return values from all handlers are accumulated.
  * - `'pipe'` — middleware: each handler wraps the next.
+ * - `'observe'` — ordered observation with fatal failures contained.
+ * - `'direct'` — bounded repeated synchronous execution measured once.
+ * - `'renderable'` — synchronous composition through `children`.
  */
-export type ExecutionStrategy = 'parallel' | 'sequential' | 'first' | 'reduce' | 'pipe';
+export type ExecutionStrategy =
+  | 'parallel'
+  | 'sequential'
+  | 'first'
+  | 'reduce'
+  | 'pipe'
+  | 'observe'
+  | 'direct'
+  | 'renderable';
 
 /**
  * Options returned by a cache handler to control hook result caching.
@@ -145,6 +156,26 @@ export type PluginHooks<
 };
 
 /**
+ * Validates that consumer metadata cannot be mistaken for executable hooks.
+ *
+ * Function values and objects with callable `handler` properties are reserved
+ * for hook declarations and therefore resolve to `never` in metadata.
+ *
+ * @template Metadata - Consumer-defined plugin metadata shape.
+ */
+export type NonHookPluginMetadata<Metadata extends object> = {
+  readonly [Key in keyof Metadata]: Extract<Metadata[Key], (...args: any[]) => any> extends never
+    ? 'handler' extends keyof NonNullable<Metadata[Key]>
+      ? NonNullable<Metadata[Key]> extends {handler?: infer Handler}
+        ? Extract<Handler, (...args: any[]) => any> extends never
+          ? Metadata[Key]
+          : never
+        : Metadata[Key]
+      : Metadata[Key]
+    : never;
+};
+
+/**
  * A named bundle of hook implementations.
  *
  * Plugins are plain objects with a required `name` and optional hook
@@ -153,14 +184,17 @@ export type PluginHooks<
  *
  * @template HookMap - The lifecycle hook map this plugin targets.
  * @template Name - The literal plugin name, used to resolve the store type.
+ * @template Metadata - Consumer-defined non-hook properties carried by the plugin.
  */
 export type Plugin<
   HookMap extends Record<keyof HookMap, (...args: any[]) => any> = Lifecycles,
   Name extends string = string,
+  Metadata extends object = {},
 > = {
   /** Unique name identifying this plugin. */
   readonly name: Name;
-} & Partial<PluginHooks<HookMap>>;
+} & Partial<PluginHooks<HookMap>> &
+  NonHookPluginMetadata<Metadata>;
 
 /**
  * Factory that provides scoped infrastructure for plugin contexts.
@@ -417,6 +451,148 @@ export interface PluginContainerExecuteOptions<
 }
 
 /**
+ * Continuation injected into the first argument of a pipe hook.
+ *
+ * Each continuation may be invoked at most once. Calling it advances to the
+ * next middleware or to the caller-provided terminal continuation.
+ *
+ * @template Result - The value produced by the remainder of the chain.
+ */
+export interface PluginContinuation<Result> {
+  /** Advances the middleware chain and returns its result. */
+  readonly next: () => Result;
+}
+
+/**
+ * Caller-supplied arguments for a pipe hook.
+ *
+ * The engine injects {@link PluginContinuation.next} into the first object
+ * argument, so callers provide the remaining shape without `next`.
+ *
+ * @template Handler - The hook handler being piped.
+ */
+export type PluginPipeArguments<Handler extends (...args: any[]) => any> = Handler extends (
+  first: infer First,
+  ...rest: infer Rest
+) => any
+  ? First extends (...args: any[]) => any
+    ? never
+    : First extends object
+      ? [Omit<First, keyof PluginContinuation<unknown>>, ...Rest]
+      : never
+  : never;
+
+/**
+ * Terminal continuation invoked after the final middleware.
+ *
+ * @template Handler - The hook handler being piped.
+ */
+export interface PluginPipeTerminal<Handler extends (...args: any[]) => any> {
+  /** Produces the terminal result from the caller-supplied hook arguments. */
+  (...args: PluginPipeArguments<Handler>): ReturnType<Handler>;
+}
+
+/**
+ * Options for container pipe strategy methods.
+ *
+ * @template HookMap - The hook map defining available hooks.
+ * @template Name - The specific middleware hook to execute.
+ */
+export interface PluginContainerPipeOptions<
+  HookMap extends Record<keyof HookMap, (...args: any[]) => any>,
+  Name extends keyof HookMap,
+> extends Omit<PluginContainerExecuteOptions<HookMap, Name>, 'args'> {
+  /** Hook arguments without the engine-injected continuation. */
+  args: PluginPipeArguments<HookMap[Name]>;
+
+  /** Optional operation invoked after the last middleware. */
+  terminal?: PluginPipeTerminal<HookMap[Name]>;
+}
+
+/**
+ * Options for one reduction performed inside a direct execution scope.
+ *
+ * @template Handler - The prepared hook handler type.
+ * @template Accumulator - The accumulated result type.
+ */
+export interface PluginDirectReduceOptions<Handler extends (...args: any[]) => any, Accumulator> {
+  /** Arguments passed to each prepared hook. */
+  args: Parameters<Handler>;
+
+  /** Starting accumulator value. */
+  initial: Accumulator;
+
+  /** Callback that folds each synchronous handler result. */
+  reduce: ReduceCallback<Accumulator, ReturnType<Handler>>;
+}
+
+/**
+ * Engine-owned executor available only during a direct execution scope.
+ *
+ * The executor preserves normalized ordering, context binding, error policy,
+ * and caching while omitting per-invocation measurement. It becomes unusable
+ * when the enclosing scope returns.
+ *
+ * @template Handler - The prepared hook handler type.
+ */
+export interface PluginDirectExecutor<Handler extends (...args: any[]) => any> {
+  /** Runs all prepared handlers in order and ignores their return values. */
+  sequential(args: Parameters<Handler>): void;
+
+  /** Returns the first non-null result from the prepared handlers. */
+  first(args: Parameters<Handler>): ReturnType<Handler> | undefined;
+
+  /** Folds results from all prepared handlers into an accumulator. */
+  reduce<Accumulator>(options: PluginDirectReduceOptions<Handler, Accumulator>): Accumulator;
+}
+
+/**
+ * Callback executed within a bounded direct execution scope.
+ *
+ * @template Handler - The prepared hook handler type.
+ * @template Result - The synchronous value returned by the scope.
+ */
+export interface PluginDirectCallback<Handler extends (...args: any[]) => any, Result> {
+  /** Executes repeated calls through the prepared hook executor. */
+  (executor: PluginDirectExecutor<Handler>): Result;
+}
+
+/**
+ * Hook names whose declared return types are entirely synchronous.
+ *
+ * @template HookMap - The hook map to inspect.
+ */
+export type PluginSynchronousHookName<
+  HookMap extends Record<keyof HookMap, (...args: any[]) => any>,
+> = {
+  [Name in keyof HookMap]: Extract<ReturnType<HookMap[Name]>, PromiseLike<unknown>> extends never
+    ? Name
+    : never;
+}[keyof HookMap];
+
+/**
+ * Options for a bounded direct execution scope.
+ *
+ * @template HookMap - The hook map defining available hooks.
+ * @template Name - The hook prepared for repeated synchronous execution.
+ * @template Result - The synchronous value returned by the scope.
+ */
+export interface PluginContainerDirectOptions<
+  HookMap extends Record<keyof HookMap, (...args: any[]) => any>,
+  Name extends PluginSynchronousHookName<HookMap>,
+  Result,
+> {
+  /** The hook to prepare. */
+  hook: Name;
+
+  /** Synchronous callback receiving the bounded prepared executor. */
+  execute: PluginDirectCallback<HookMap[Name], Result>;
+
+  /** Optional context factory applied once per prepared plugin. */
+  context?: ContextFactory<Plugin<HookMap>>;
+}
+
+/**
  * Options for container reduce strategy methods.
  *
  * @template HookMap - The hook map defining available hooks.
@@ -578,8 +754,21 @@ export interface ReadonlyPluginContainer<
    * @returns The result of the middleware chain.
    */
   pipe<Name extends Extract<keyof HookMap, string>>(
-    options: PluginContainerExecuteOptions<HookMap, Name>,
+    options: PluginContainerPipeOptions<HookMap, Name>,
   ): Promise<Awaited<ReturnType<HookMap[Name]>>>;
+
+  /**
+   * Runs observers in order while containing fatal observer failures.
+   *
+   * A fatal failure stops this observation run but does not reject the
+   * returned promise. Recoverable failures continue to later observers.
+   *
+   * @template Name - The observer hook name to execute.
+   * @param options - Execution options.
+   */
+  observe<Name extends Extract<keyof HookMap, string>>(
+    options: PluginContainerExecuteOptions<HookMap, Name>,
+  ): Promise<void>;
 
   /**
    * Synchronous variant of {@link sequential}.
@@ -622,8 +811,35 @@ export interface ReadonlyPluginContainer<
    * @returns The result of the middleware chain.
    */
   pipeSync<Name extends Extract<keyof HookMap, string>>(
-    options: PluginContainerExecuteOptions<HookMap, Name>,
+    options: PluginContainerPipeOptions<HookMap, Name>,
   ): ReturnType<HookMap[Name]>;
+
+  /**
+   * Synchronous variant of {@link observe}.
+   *
+   * A fatal observer failure stops this observation run and is contained.
+   *
+   * @template Name - The observer hook name to execute.
+   * @param options - Execution options.
+   */
+  observeSync<Name extends Extract<keyof HookMap, string>>(
+    options: PluginContainerExecuteOptions<HookMap, Name>,
+  ): void;
+
+  /**
+   * Runs a synchronous callback with one prepared hook executor.
+   *
+   * Ordering and contexts are prepared once and execution is measured once
+   * for the entire callback. Returning a promise is not supported.
+   *
+   * @template Name - The hook to prepare.
+   * @template Result - The synchronous callback result.
+   * @param options - Direct scope options.
+   * @returns The callback result.
+   */
+  direct<Name extends Extract<PluginSynchronousHookName<HookMap>, string>, Result>(
+    options: PluginContainerDirectOptions<HookMap, Name, Result>,
+  ): Result;
 
   /**
    * Composes a value by threading it through all handlers for a hook.
@@ -695,6 +911,17 @@ export interface PluginContainer<
    * @returns `this` for fluent chaining.
    */
   remove(plugin: Plugin<HookMap>): this;
+
+  /**
+   * Permanently protects every registration of a plugin from removal.
+   *
+   * Protection is idempotent and survives forks. Other unprotected plugins
+   * remain mutable. Protecting a plugin that is not registered throws.
+   *
+   * @param plugin - The registered plugin to protect.
+   * @returns `this` for fluent chaining.
+   */
+  protect(plugin: Plugin<HookMap>): this;
 
   /**
    * Creates a child container inheriting this container's plugins.

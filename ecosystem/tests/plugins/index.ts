@@ -155,6 +155,61 @@ export function runPluginsComplianceTests(factories: PluginsComplianceTestSuite)
       });
     });
 
+    describe('protect()', () => {
+      it('protects registered plugins while leaving other membership mutable', () => {
+        const protectedPlugin = createPlugin('protected', {setup: vi.fn()});
+        const localPlugin = createPlugin('local', {setup: vi.fn()});
+        const container = buildContainer({plugins: [protectedPlugin, localPlugin]});
+
+        const result = container.protect(protectedPlugin);
+        container.remove(localPlugin).add(createPlugin('replacement', {setup: vi.fn()}));
+
+        expect(result).toBe(container);
+        expect(() => container.remove(protectedPlugin)).toThrow();
+        expect(container.size).toBe(2);
+      });
+
+      it('is idempotent and throws for an unknown plugin', () => {
+        const plugin = createPlugin('protected', {setup: vi.fn()});
+        const container = buildContainer({plugins: [plugin]});
+
+        container.protect(plugin).protect(plugin);
+
+        expect(() => container.protect(createPlugin('unknown'))).toThrow();
+        expect(container.size).toBe(1);
+      });
+
+      it('protects every registration of the same plugin object', () => {
+        const plugin = createPlugin('duplicate', {setup: vi.fn()});
+        const container = buildContainer({plugins: [plugin, plugin]});
+
+        container.protect(plugin);
+
+        expect(() => container.remove(plugin)).toThrow();
+        expect(container.size).toBe(2);
+      });
+
+      it('copies inherited protection into forks', () => {
+        const plugin = createPlugin('protected', {setup: vi.fn()});
+        const container = buildContainer({plugins: [plugin]});
+        container.protect(plugin);
+
+        const child = container.fork();
+
+        expect(() => child.remove(plugin)).toThrow();
+      });
+
+      it('does not prevent terminal disposal', () => {
+        const plugin = createPlugin('protected', {setup: vi.fn()});
+        const container = buildContainer({plugins: [plugin]});
+        container.protect(plugin);
+
+        container.dispose();
+
+        expect(container.size).toBe(0);
+      });
+    });
+
     describe('has() / missing()', () => {
       it('reflects whether any plugin implements a hook', () => {
         const container = buildContainer({plugins: [createPlugin('alpha', {setup: vi.fn()})]});
@@ -318,6 +373,120 @@ export function runPluginsComplianceTests(factories: PluginsComplianceTestSuite)
       });
     });
 
+    describe('observe() / observeSync()', () => {
+      it('contains fatal observer failures and stops the current run', async () => {
+        const skipped = vi.fn();
+        const listener = vi.fn();
+        const container = buildContainer({
+          plugins: [
+            createPlugin('failing', {
+              setup: () => {
+                throw new Error('observer failed');
+              },
+            }),
+            createPlugin('skipped', {setup: skipped}),
+          ],
+        });
+        container.on('plugin:observation.errored', listener);
+
+        await expect(container.observe({hook: 'setup', args: []})).resolves.toBeUndefined();
+
+        expect(skipped).not.toHaveBeenCalled();
+        expect(listener).toHaveBeenCalledTimes(1);
+      });
+
+      it('contains fatal observer failures synchronously', () => {
+        const skipped = vi.fn();
+        const container = buildContainer({
+          plugins: [
+            createPlugin('failing', {
+              setup: () => {
+                throw new Error('observer failed');
+              },
+            }),
+            createPlugin('skipped', {setup: skipped}),
+          ],
+        });
+
+        expect(() => container.observeSync({hook: 'setup', args: []})).not.toThrow();
+        expect(skipped).not.toHaveBeenCalled();
+      });
+
+      it('contains failures from observation diagnostic listeners', async () => {
+        const container = buildContainer({
+          plugins: [
+            createPlugin('failing', {
+              setup: () => {
+                throw new Error('observer failed');
+              },
+            }),
+          ],
+        });
+        container.on('plugin:observation.errored', () => {
+          throw new Error('diagnostic listener failed');
+        });
+
+        await expect(container.observe({hook: 'setup', args: []})).resolves.toBeUndefined();
+      });
+
+      it('contains synchronous diagnostic listener failures', () => {
+        const container = buildContainer({
+          plugins: [
+            createPlugin('failing', {
+              setup: () => {
+                throw new Error('observer failed');
+              },
+            }),
+          ],
+        });
+        container.on('plugin:observation.errored', () => {
+          throw new Error('diagnostic listener failed');
+        });
+
+        expect(() => container.observeSync({hook: 'setup', args: []})).not.toThrow();
+      });
+
+      it('continues after recoverable observer failures asynchronously', async () => {
+        const continued = vi.fn();
+        const container = buildContainer({
+          plugins: [
+            createPlugin('recoverable', {
+              setup: {
+                handler: () => {
+                  throw new Error('observer failed');
+                },
+                errorHandler: () => 'recoverable' as const,
+              },
+            }),
+            createPlugin('continued', {setup: continued}),
+          ],
+        });
+
+        await container.observe({hook: 'setup', args: []});
+        expect(continued).toHaveBeenCalledTimes(1);
+      });
+
+      it('continues after recoverable observer failures synchronously', () => {
+        const continued = vi.fn();
+        const container = buildContainer({
+          plugins: [
+            createPlugin('recoverable', {
+              setup: {
+                handler: () => {
+                  throw new Error('observer failed');
+                },
+                errorHandler: () => 'recoverable' as const,
+              },
+            }),
+            createPlugin('continued', {setup: continued}),
+          ],
+        });
+
+        expect(() => container.observeSync({hook: 'setup', args: []})).not.toThrow();
+        expect(continued).toHaveBeenCalledTimes(1);
+      });
+    });
+
     describe('first()', () => {
       it('returns the first non-null result and skips the rest', async () => {
         const skipped = vi.fn();
@@ -346,6 +515,169 @@ export function runPluginsComplianceTests(factories: PluginsComplianceTestSuite)
         const result = await container.first({hook: 'boot', args: [{name: 'test'}]});
 
         expect(result).toBeUndefined();
+      });
+    });
+
+    describe('direct()', () => {
+      it('preserves order and first-result short-circuiting across repeated calls', () => {
+        const skipped = vi.fn();
+        const container = buildContainer({
+          plugins: [
+            createPlugin('empty', {boot: () => undefined}),
+            createPlugin('match', {boot: ({name}: {name: string}) => `found:${name}`}),
+            createPlugin('skipped', {boot: skipped}),
+          ],
+        });
+
+        const result = container.direct({
+          hook: 'boot',
+          execute: (executor) => [executor.first([{name: 'one'}]), executor.first([{name: 'two'}])],
+        });
+
+        expect(result).toEqual(['found:one', 'found:two']);
+        expect(skipped).not.toHaveBeenCalled();
+      });
+
+      it('prepares context once per plugin for the scope', () => {
+        const factory = vi.fn(() => ({}));
+        const container = buildContainer({
+          plugins: [
+            createPlugin('alpha', {setup: vi.fn()}),
+            createPlugin('beta', {setup: vi.fn()}),
+          ],
+        });
+
+        container.direct({
+          hook: 'setup',
+          context: factory,
+          execute(executor) {
+            executor.sequential([]);
+            executor.sequential([]);
+          },
+        });
+
+        expect(factory).toHaveBeenCalledTimes(2);
+      });
+
+      it('preserves hook caching without invoking handlers repeatedly', () => {
+        const handler = vi.fn(() => 'cached');
+        const container = buildContainer({
+          plugins: [
+            createPlugin('cached', {
+              transform: {handler, cacheHandler: (code: string) => ({key: code})},
+            }),
+          ],
+        });
+
+        const result = container.direct({
+          hook: 'transform',
+          execute: (executor) => [executor.first(['same']), executor.first(['same'])],
+        });
+
+        expect(result).toEqual(['cached', 'cached']);
+        expect(handler).toHaveBeenCalledTimes(1);
+      });
+
+      it('uses a membership snapshot until the scope returns', () => {
+        const calls: string[] = [];
+        const container = buildContainer({
+          plugins: [createPlugin('initial', {setup: () => calls.push('initial')})],
+        });
+
+        container.direct({
+          hook: 'setup',
+          execute(executor) {
+            container.add(createPlugin('later', {setup: () => calls.push('later')}));
+            executor.sequential([]);
+          },
+        });
+        container.sequentialSync({hook: 'setup', args: []});
+
+        expect(calls).toEqual(['initial', 'initial', 'later']);
+      });
+
+      it('keeps removed snapshot runners alive until the scope returns', () => {
+        const handler = vi.fn();
+        const plugin = createPlugin('removable', {setup: handler});
+        const container = buildContainer({plugins: [plugin]});
+
+        container.direct({
+          hook: 'setup',
+          execute(executor) {
+            container.remove(plugin);
+            executor.sequential([]);
+          },
+        });
+        container.sequentialSync({hook: 'setup', args: []});
+
+        expect(handler).toHaveBeenCalledTimes(1);
+        expect(container.size).toBe(0);
+      });
+
+      it('invalidates an escaped executor and rejects asynchronous callbacks', () => {
+        let escaped: Contract.PluginDirectExecutor<ComplianceHookMap['setup']> | undefined;
+        const container = buildContainer({plugins: [createPlugin('alpha', {setup: vi.fn()})]});
+
+        container.direct({
+          hook: 'setup',
+          execute(executor) {
+            escaped = executor;
+          },
+        });
+
+        expect(() => escaped?.sequential([])).toThrow();
+        expect(() =>
+          container.direct({
+            hook: 'setup',
+            execute: async (executor) => {
+              await Promise.resolve();
+              executor.sequential([]);
+            },
+          }),
+        ).toThrow();
+
+        const asynchronousHook = buildContainer({
+          plugins: [createPlugin('async', {setup: async () => undefined})],
+        });
+        expect(() =>
+          asynchronousHook.direct({
+            hook: 'setup',
+            execute: (executor) => executor.sequential([]),
+          }),
+        ).toThrow('Synchronous plugin execution cannot accept a promise result.');
+      });
+
+      it('continues after recoverable failures and propagates fatal failures', () => {
+        const container = buildContainer({
+          plugins: [
+            createPlugin('recoverable', {
+              boot: {
+                handler: () => {
+                  throw new Error('recoverable');
+                },
+                errorHandler: () => 'recoverable' as const,
+              },
+            }),
+            createPlugin('match', {boot: () => 'matched'}),
+          ],
+        });
+
+        expect(
+          container.direct({hook: 'boot', execute: (executor) => executor.first([{name: 'x'}])}),
+        ).toBe('matched');
+
+        const fatal = buildContainer({
+          plugins: [
+            createPlugin('fatal', {
+              setup: () => {
+                throw new Error('fatal');
+              },
+            }),
+          ],
+        });
+        expect(() =>
+          fatal.direct({hook: 'setup', execute: (executor) => executor.sequential([])}),
+        ).toThrow();
       });
     });
 
@@ -401,6 +733,16 @@ export function runPluginsComplianceTests(factories: PluginsComplianceTestSuite)
     });
 
     describe('pipe()', () => {
+      it('rejects a null first argument before middleware executes', async () => {
+        const handler = vi.fn();
+        const container = buildContainer({plugins: [createPlugin('alpha', {boot: handler})]});
+
+        await expect(container.pipe({hook: 'boot', args: [null]} as any)).rejects.toThrow(
+          'Plugin pipe execution requires an object as its first hook argument.',
+        );
+        expect(handler).not.toHaveBeenCalled();
+      });
+
       it('chains handler results through next()', async () => {
         const container = buildContainer({
           plugins: [
@@ -435,9 +777,100 @@ export function runPluginsComplianceTests(factories: PluginsComplianceTestSuite)
         expect(result).toBe('short-circuit');
         expect(skipped).not.toHaveBeenCalled();
       });
+
+      it('calls a terminal continuation after the final middleware', async () => {
+        const container = buildContainer({
+          plugins: [
+            createPlugin('alpha', {
+              boot: async ({next}: any) => `outer(${await next()})`,
+            }),
+          ],
+        });
+
+        const result = await container.pipe({
+          hook: 'boot',
+          args: [{name: 'test'}],
+          terminal: ({name}) => `terminal(${name})`,
+        });
+
+        expect(result).toBe('outer(terminal(test))');
+      });
+
+      it('rejects a second call to the same continuation', async () => {
+        const container = buildContainer({
+          plugins: [
+            createPlugin('alpha', {
+              boot: {
+                handler: async ({next}: any) => {
+                  await next();
+                  return next();
+                },
+                errorHandler: () => 'recoverable' as const,
+              },
+            }),
+          ],
+        });
+
+        await expect(
+          container.pipe({hook: 'boot', args: [{name: 'test'}], terminal: () => 'done'}),
+        ).rejects.toThrow();
+      });
+
+      it('does not repeat downstream work when middleware recovers after next()', async () => {
+        const downstream = vi.fn(() => 'continued');
+        const container = buildContainer({
+          plugins: [
+            createPlugin('recoverable', {
+              boot: {
+                handler: async ({next}: any) => {
+                  await next();
+                  throw new Error('recoverable after next');
+                },
+                errorHandler: () => 'recoverable' as const,
+              },
+            }),
+            createPlugin('downstream', {boot: downstream}),
+          ],
+        });
+
+        const result = await container.pipe({hook: 'boot', args: [{name: 'test'}]});
+
+        expect(result).toBe('continued');
+        expect(downstream).toHaveBeenCalledTimes(1);
+      });
+
+      it('skips recoverably failing middleware and continues the chain', async () => {
+        const container = buildContainer({
+          plugins: [
+            createPlugin('recoverable', {
+              boot: {
+                handler: () => {
+                  throw new Error('recoverable');
+                },
+                errorHandler: () => 'recoverable' as const,
+              },
+            }),
+            createPlugin('next', {boot: ({name}: any) => `continued:${name}`}),
+          ],
+        });
+
+        const result = await container.pipe({hook: 'boot', args: [{name: 'test'}]});
+
+        expect(result).toBe('continued:test');
+      });
     });
 
     describe('pipeSync()', () => {
+      it('rejects a primitive first argument before middleware executes', () => {
+        const handler = vi.fn();
+        const container = buildContainer({plugins: [createPlugin('alpha', {boot: handler})]});
+
+        expect(() => container.pipeSync({hook: 'boot', args: ['invalid']} as any)).toThrow(
+          'Plugin pipe execution requires an object as its first hook argument.',
+        );
+        expect(handler).not.toHaveBeenCalled();
+      });
+
       it('chains handler results synchronously through next()', () => {
         const container = buildContainer({
           plugins: [
@@ -456,6 +889,120 @@ export function runPluginsComplianceTests(factories: PluginsComplianceTestSuite)
         const result = container.pipeSync({hook: 'boot', args: [{name: 'test'}]});
 
         expect(result).toBe('outer(inner(test))');
+      });
+
+      it('continues after recoverable synchronous middleware failures', () => {
+        const downstream = vi.fn(() => 'continued');
+        const container = buildContainer({
+          plugins: [
+            createPlugin('recoverable', {
+              boot: {
+                handler: () => {
+                  throw new Error('recoverable');
+                },
+                errorHandler: () => 'recoverable' as const,
+              },
+            }),
+            createPlugin('downstream', {boot: downstream}),
+          ],
+        });
+
+        const result = container.pipeSync({hook: 'boot', args: [{name: 'test'}]});
+
+        expect(result).toBe('continued');
+        expect(downstream).toHaveBeenCalledTimes(1);
+      });
+
+      it('does not repeat downstream work when synchronous middleware recovers after next()', () => {
+        const downstream = vi.fn(() => 'continued');
+        const container = buildContainer({
+          plugins: [
+            createPlugin('recoverable', {
+              boot: {
+                handler: ({next}: any) => {
+                  next();
+                  throw new Error('recoverable after next');
+                },
+                errorHandler: () => 'recoverable' as const,
+              },
+            }),
+            createPlugin('downstream', {boot: downstream}),
+          ],
+        });
+
+        const result = container.pipeSync({hook: 'boot', args: [{name: 'test'}]});
+
+        expect(result).toBe('continued');
+        expect(downstream).toHaveBeenCalledTimes(1);
+      });
+
+      it('does not swallow nullish downstream throws during synchronous recovery', () => {
+        const container = buildContainer({
+          plugins: [
+            createPlugin('recoverable', {
+              boot: {
+                handler: ({next}: any) => next(),
+                errorHandler: () => 'recoverable' as const,
+              },
+            }),
+            createPlugin('downstream', {
+              boot: () => {
+                throw undefined;
+              },
+            }),
+          ],
+        });
+        let didThrow = false;
+
+        try {
+          container.pipeSync({hook: 'boot', args: [{name: 'test'}]});
+        } catch {
+          didThrow = true;
+        }
+
+        expect(didThrow).toBe(true);
+      });
+
+      it('uses a synchronous terminal and rejects repeated continuation calls', () => {
+        const terminalContainer = buildContainer();
+        expect(
+          terminalContainer.pipeSync({
+            hook: 'boot',
+            args: [{name: 'test'}],
+            terminal: ({name}) => `terminal:${name}`,
+          }),
+        ).toBe('terminal:test');
+
+        const repeatedContainer = buildContainer({
+          plugins: [
+            createPlugin('alpha', {
+              boot: ({next}: any) => {
+                next();
+                return next();
+              },
+            }),
+          ],
+        });
+        expect(() =>
+          repeatedContainer.pipeSync({
+            hook: 'boot',
+            args: [{name: 'test'}],
+            terminal: () => 'done',
+          }),
+        ).toThrow();
+      });
+    });
+
+    describe('plugin metadata', () => {
+      it('ignores enumerable non-hook properties during normalization', () => {
+        const plugin = createPlugin('metadata', {
+          setup: vi.fn(),
+          wire: {protocol: 'wire-1'},
+        });
+        const container = buildContainer({plugins: [plugin]});
+
+        expect((container as any).has('wire')).toBe(false);
+        expect(() => container.sequentialSync({hook: 'setup', args: []})).not.toThrow();
       });
     });
 

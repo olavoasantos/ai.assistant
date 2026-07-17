@@ -4,13 +4,17 @@ import {ApplicationError} from '@ai.assistant/error';
 import {EventEmitter} from '@ai.assistant/event-emitter';
 import {
   PLUGIN_CONTAINER_CONTEXT_FACTORY,
+  PLUGIN_CONTAINER_DEFERRED_RUNNERS,
+  PLUGIN_CONTAINER_DIRECT_SCOPES,
   PLUGIN_CONTAINER_DISPOSED,
   PLUGIN_CONTAINER_FROZEN,
   PLUGIN_CONTAINER_IDENTIFIER,
+  PLUGIN_CONTAINER_PROTECTED,
   PLUGIN_CONTAINER_RUNNERS,
   PLUGIN_CONTAINER_SORTED,
 } from '../constants';
-import type {PluginContainerEvents, SortedRunnerEntry} from '../types';
+import type {PluginContainerEvents, PreparedRunnerEntry, SortedRunnerEntry} from '../types';
+import {PluginDirectExecutor} from './PluginDirectExecutor';
 import {PluginRunner} from './PluginRunner';
 
 /**
@@ -55,6 +59,15 @@ export class PluginContainer<
 
   /** @internal Memoized sorted entries per hook name. */
   [PLUGIN_CONTAINER_SORTED]: Map<string, SortedRunnerEntry[]> = new Map();
+
+  /** @internal Plugin objects protected from removal. */
+  [PLUGIN_CONTAINER_PROTECTED]: Set<Contracts.Plugin<HookMap>> = new Set();
+
+  /** @internal Number of active bounded direct scopes. */
+  [PLUGIN_CONTAINER_DIRECT_SCOPES] = 0;
+
+  /** @internal Removed runners retained until active direct scopes finish. */
+  [PLUGIN_CONTAINER_DEFERRED_RUNNERS]: Set<PluginRunner<HookMap>> = new Set();
 
   /** @internal */
   [PLUGIN_CONTAINER_FROZEN] = false;
@@ -116,6 +129,13 @@ export class PluginContainer<
    */
   remove(plugin: Contracts.Plugin<HookMap>): this {
     this.ensureWritable();
+    if (this[PLUGIN_CONTAINER_PROTECTED].has(plugin)) {
+      throw new ApplicationError({
+        message: `Cannot remove protected plugin "${plugin.name}".`,
+        code: 500,
+      });
+    }
+
     const index = this[PLUGIN_CONTAINER_RUNNERS].findIndex(
       (runner) => runner.getPlugin() === plugin,
     );
@@ -124,8 +144,37 @@ export class PluginContainer<
       this[PLUGIN_CONTAINER_RUNNERS].splice(index, 1);
       this[PLUGIN_CONTAINER_SORTED].clear();
       this.removeChild(runner);
-      runner.dispose();
+      if (this[PLUGIN_CONTAINER_DIRECT_SCOPES] > 0) {
+        this[PLUGIN_CONTAINER_DEFERRED_RUNNERS].add(runner);
+      } else {
+        runner.dispose();
+      }
       this.emit('plugin:removed', {details: {plugin: plugin.name}});
+    }
+    return this;
+  }
+
+  /**
+   * Permanently protects every registration of a plugin from removal.
+   *
+   * @param plugin - The registered plugin to protect.
+   * @returns `this` for fluent chaining.
+   */
+  protect(plugin: Contracts.Plugin<HookMap>): this {
+    this.ensureWritable();
+    const registered = this[PLUGIN_CONTAINER_RUNNERS].some(
+      (runner) => runner.getPlugin() === plugin,
+    );
+    if (!registered) {
+      throw new ApplicationError({
+        message: `Cannot protect unregistered plugin "${plugin.name}".`,
+        code: 500,
+      });
+    }
+
+    if (!this[PLUGIN_CONTAINER_PROTECTED].has(plugin)) {
+      this[PLUGIN_CONTAINER_PROTECTED].add(plugin);
+      this.emit('plugin:protected', {details: {plugin: plugin.name}});
     }
     return this;
   }
@@ -302,36 +351,97 @@ export class PluginContainer<
    * Cache is bypassed for pipe (each handler depends on downstream).
    */
   async pipe<Name extends Extract<keyof HookMap, string>>(
-    options: Contracts.PluginContainerExecuteOptions<HookMap, Name>,
+    options: Contracts.PluginContainerPipeOptions<HookMap, Name>,
   ): Promise<Awaited<ReturnType<HookMap[Name]>>> {
     this.ensureNotDisposed();
+    const firstArgument = options.args[0] as unknown;
+    if (firstArgument == null || typeof firstArgument !== 'object') {
+      throw new ApplicationError({
+        message: 'Plugin pipe execution requires an object as its first hook argument.',
+        code: 500,
+      });
+    }
     const entries = this.getSortedEntries(options.hook);
-    if (entries.length === 0) return undefined as Awaited<ReturnType<HookMap[Name]>>;
-
     const contextFactory = options.context ?? this[PLUGIN_CONTAINER_CONTEXT_FACTORY];
     const hookName = options.hook;
 
     return this.telemetry.measureCallback(
       hookName,
       async () => {
-        let index = 0;
-
-        const next = async (): Promise<any> => {
-          const entry = entries[index++];
-          if (entry == null) return undefined;
+        const dispatch = async (index: number): Promise<any> => {
+          const entry = entries[index];
+          if (entry == null) return options.terminal?.(...options.args);
 
           const contextOptions = contextFactory?.(entry.plugin);
           const prepared = entry.runner.prepareInvocation(hookName, contextOptions);
-          if (prepared == null) return next();
+          if (prepared == null) return dispatch(index + 1);
 
-          const argsWithNext = [{...(options.args[0] as any), next}] as Parameters<HookMap[Name]>;
-          return await prepared.handler.apply(prepared.view, argsWithNext);
+          let nextCalled = false;
+          let nextResult: Promise<any> | undefined;
+          let continuationError: ApplicationError | undefined;
+          const next = (): Promise<any> => {
+            if (nextCalled) {
+              continuationError = new ApplicationError({
+                message: `Plugin middleware continuation for "${hookName}" was called more than once.`,
+                code: 500,
+              });
+              throw continuationError;
+            }
+            nextCalled = true;
+            nextResult = dispatch(index + 1);
+            return nextResult;
+          };
+          const argsWithNext = [
+            {...(options.args[0] as object), next},
+            ...options.args.slice(1),
+          ] as Parameters<HookMap[Name]>;
+          const result = await entry.runner.invokePrepared(prepared, argsWithNext, {cache: false});
+          if (continuationError != null) throw continuationError;
+          if (!result.recovered) return result.value;
+          return nextCalled ? nextResult : dispatch(index + 1);
         };
 
-        return await next();
+        return await dispatch(0);
       },
       {tags: {strategy: 'pipe'}},
     );
+  }
+
+  /**
+   * Runs observers in order while containing fatal observer failures.
+   */
+  async observe<Name extends Extract<keyof HookMap, string>>(
+    options: Contracts.PluginContainerExecuteOptions<HookMap, Name>,
+  ): Promise<void> {
+    this.ensureNotDisposed();
+    const entries = this.getSortedEntries(options.hook);
+    if (entries.length === 0) return;
+
+    const contextFactory = options.context ?? this[PLUGIN_CONTAINER_CONTEXT_FACTORY];
+    try {
+      await this.telemetry.measureCallback(
+        options.hook,
+        async () => {
+          for (const entry of entries) {
+            const contextOptions = contextFactory?.(entry.plugin);
+            await entry.runner.trigger({
+              hook: options.hook,
+              args: options.args,
+              context: contextOptions,
+            });
+          }
+        },
+        {tags: {strategy: 'observe'}},
+      );
+    } catch (thrown) {
+      try {
+        this.emit('plugin:observation.errored', {
+          details: {hook: options.hook, error: thrown},
+        });
+      } catch {
+        // Observation diagnostics are contained with the observer pipeline.
+      }
+    }
   }
 
   /**
@@ -432,36 +542,152 @@ export class PluginContainer<
    * Synchronous variant of {@link pipe}.
    */
   pipeSync<Name extends Extract<keyof HookMap, string>>(
-    options: Contracts.PluginContainerExecuteOptions<HookMap, Name>,
+    options: Contracts.PluginContainerPipeOptions<HookMap, Name>,
   ): ReturnType<HookMap[Name]> {
     this.ensureNotDisposed();
+    const firstArgument = options.args[0] as unknown;
+    if (firstArgument == null || typeof firstArgument !== 'object') {
+      throw new ApplicationError({
+        message: 'Plugin pipe execution requires an object as its first hook argument.',
+        code: 500,
+      });
+    }
     const entries = this.getSortedEntries(options.hook);
-    if (entries.length === 0) return undefined as ReturnType<HookMap[Name]>;
-
     const contextFactory = options.context ?? this[PLUGIN_CONTAINER_CONTEXT_FACTORY];
     const hookName = options.hook;
 
     return this.telemetry.measureCallback(
       hookName,
       () => {
-        let index = 0;
-
-        const next = (): any => {
-          const entry = entries[index++];
-          if (entry == null) return undefined;
+        const dispatch = (index: number): any => {
+          const entry = entries[index];
+          if (entry == null) return options.terminal?.(...options.args);
 
           const contextOptions = contextFactory?.(entry.plugin);
           const prepared = entry.runner.prepareInvocation(hookName, contextOptions);
-          if (prepared == null) return next();
+          if (prepared == null) return dispatch(index + 1);
 
-          const argsWithNext = [{...(options.args[0] as any), next}] as Parameters<HookMap[Name]>;
-          return prepared.handler.apply(prepared.view, argsWithNext);
+          let nextCalled = false;
+          let nextResult: any;
+          let nextError: unknown;
+          let nextThrew = false;
+          let continuationError: ApplicationError | undefined;
+          const next = (): any => {
+            if (nextCalled) {
+              continuationError = new ApplicationError({
+                message: `Plugin middleware continuation for "${hookName}" was called more than once.`,
+                code: 500,
+              });
+              throw continuationError;
+            }
+            nextCalled = true;
+            try {
+              nextResult = dispatch(index + 1);
+              return nextResult;
+            } catch (thrown) {
+              nextError = thrown;
+              nextThrew = true;
+              throw thrown;
+            }
+          };
+          const argsWithNext = [
+            {...(options.args[0] as object), next},
+            ...options.args.slice(1),
+          ] as Parameters<HookMap[Name]>;
+          const result = entry.runner.invokePreparedSync(prepared, argsWithNext, {cache: false});
+          if (continuationError != null) throw continuationError;
+          if (!result.recovered) return result.value;
+          if (nextThrew) throw nextError;
+          return nextCalled ? nextResult : dispatch(index + 1);
         };
 
-        return next();
+        return dispatch(0);
       },
       {tags: {strategy: 'pipe'}},
     );
+  }
+
+  /**
+   * Synchronously runs observers while containing fatal observer failures.
+   */
+  observeSync<Name extends Extract<keyof HookMap, string>>(
+    options: Contracts.PluginContainerExecuteOptions<HookMap, Name>,
+  ): void {
+    this.ensureNotDisposed();
+    const entries = this.getSortedEntries(options.hook);
+    if (entries.length === 0) return;
+
+    const contextFactory = options.context ?? this[PLUGIN_CONTAINER_CONTEXT_FACTORY];
+    try {
+      this.telemetry.measureCallback(
+        options.hook,
+        () => {
+          for (const entry of entries) {
+            const contextOptions = contextFactory?.(entry.plugin);
+            entry.runner.triggerSync({
+              hook: options.hook,
+              args: options.args,
+              context: contextOptions,
+            });
+          }
+        },
+        {tags: {strategy: 'observe'}},
+      );
+    } catch (thrown) {
+      try {
+        this.emit('plugin:observation.errored', {
+          details: {hook: options.hook, error: thrown},
+        });
+      } catch {
+        // Observation diagnostics are contained with the observer pipeline.
+      }
+    }
+  }
+
+  /**
+   * Runs a bounded synchronous callback with one prepared hook executor.
+   */
+  direct<Name extends Extract<Contracts.PluginSynchronousHookName<HookMap>, string>, Result>(
+    options: Contracts.PluginContainerDirectOptions<HookMap, Name, Result>,
+  ): Result {
+    this.ensureNotDisposed();
+    const entries = this.getSortedEntries(options.hook);
+    const contextFactory = options.context ?? this[PLUGIN_CONTAINER_CONTEXT_FACTORY];
+    const preparedEntries: PreparedRunnerEntry[] = [];
+
+    for (const entry of entries) {
+      const contextOptions = contextFactory?.(entry.plugin);
+      const invocation = entry.runner.prepareInvocation(options.hook, contextOptions);
+      if (invocation != null) preparedEntries.push({runner: entry.runner, invocation});
+    }
+
+    const executor = new PluginDirectExecutor<HookMap[Name]>(preparedEntries);
+    this[PLUGIN_CONTAINER_DIRECT_SCOPES] += 1;
+    try {
+      return this.telemetry.measureCallback(
+        options.hook,
+        () => {
+          const result = options.execute(executor);
+          if (
+            result != null &&
+            (typeof result === 'object' || typeof result === 'function') &&
+            typeof (result as {then?: unknown}).then === 'function'
+          ) {
+            void Promise.resolve(result).catch(() => undefined);
+            throw new ApplicationError({
+              message: 'Plugin direct execution callbacks must be synchronous.',
+              code: 500,
+            });
+          }
+          return result;
+        },
+        {tags: {strategy: 'direct'}},
+      );
+    } finally {
+      executor.close();
+      this[PLUGIN_CONTAINER_DIRECT_SCOPES] -= 1;
+      this.disposeDeferredRunners();
+    }
   }
 
   /**
@@ -517,6 +743,10 @@ export class PluginContainer<
       const forkedRunner = runner.fork();
       child[PLUGIN_CONTAINER_RUNNERS].push(forkedRunner);
       child.addChild(forkedRunner);
+      const plugin = runner.getPlugin();
+      if (this[PLUGIN_CONTAINER_PROTECTED].has(plugin)) {
+        child[PLUGIN_CONTAINER_PROTECTED].add(plugin);
+      }
     }
 
     if (options?.plugins != null) {
@@ -558,7 +788,12 @@ export class PluginContainer<
       this.removeChild(runner);
       runner.dispose();
     }
+    for (const runner of this[PLUGIN_CONTAINER_DEFERRED_RUNNERS]) {
+      runner.dispose();
+    }
     this[PLUGIN_CONTAINER_RUNNERS] = [];
+    this[PLUGIN_CONTAINER_DEFERRED_RUNNERS].clear();
+    this[PLUGIN_CONTAINER_PROTECTED].clear();
     this[PLUGIN_CONTAINER_SORTED].clear();
   }
 
@@ -589,6 +824,15 @@ export class PluginContainer<
     const sorted = [...pre, ...normal, ...post];
     this[PLUGIN_CONTAINER_SORTED].set(hookName, sorted);
     return sorted;
+  }
+
+  /** Disposes removed runners after the outermost direct scope completes. */
+  private disposeDeferredRunners(): void {
+    if (this[PLUGIN_CONTAINER_DIRECT_SCOPES] > 0 || this[PLUGIN_CONTAINER_DISPOSED]) return;
+    for (const runner of this[PLUGIN_CONTAINER_DEFERRED_RUNNERS]) {
+      runner.dispose();
+    }
+    this[PLUGIN_CONTAINER_DEFERRED_RUNNERS].clear();
   }
 
   /** Drains a batch of parallel promises. */

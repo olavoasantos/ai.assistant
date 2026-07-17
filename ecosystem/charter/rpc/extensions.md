@@ -5,18 +5,24 @@ This document is part of the normative [RPC charter](./README.md).
 ## Plugin Execution
 
 - RPC uses the ecosystem plugin engine as its only generic plugin orchestration mechanism.
-- Value matching, serialization, hydration, middleware, lifecycle, and observation execute through RPC-specific plugin hooks.
-- Hook ordering, contexts, short-circuiting, error policy, freezing, forking, and disposal follow the plugin charter.
-- Incoming middleware cannot dispatch one accepted request more than once.
-- Outgoing middleware that retries creates a new attempt and does not change the at-most-once guarantee of an individual request.
-- Direct value-hook execution is part of RPC’s performance budget. If generic hook overhead is unacceptable, the ecosystem plugin engine itself is improved rather than bypassed with a hidden RPC plugin path.
-- Required core behavior may use mandatory hooks that cannot be removed from an active session.
+- Value serialization, hydration, value control, incoming/outgoing middleware, endpoint/session setup, observation, and endpoint/session disposal execute through RPC-specific plugin hooks.
+- Hook ordering, contexts, short-circuiting, error policy, protection, freezing, forking, and disposal follow the plugin charter.
+- Hooks receive explicit least-capability inputs. The generic plugin `this` context never exposes the mutable RPC endpoint, session, authority tables, correlation registries, or canonical frames.
+- Incoming and outgoing middleware form separate onion chains over one discriminated semantic-operation model. Operation identity, kind, target category, and cancellation are immutable; middleware may replace the operation-specific semantic payload through explicit capabilities.
+- Incoming middleware cannot dispatch one accepted request more than once. PluginEngine permits each `next()` continuation to be called at most once.
+- Outgoing middleware that retries uses an explicit attempt capability to create a new attempt; it does not call the same middleware continuation twice or change the at-most-once guarantee of an individual request.
+- Value traversal uses a bounded synchronous PluginEngine direct scope. Ordering and contexts are prepared once per graph, configured caching and runner error policy remain active, and measurement is aggregated around the graph rather than emitted for every visited node.
+- Core remote-value behavior is installed as ordinary mandatory plugins. Active core and negotiated wire plugin objects are protected from removal for the session while descriptor-free local plugins remain mutable.
+- Endpoint setup runs once before a plugin participates in endpoint work. Negotiated session setup completes before root delivery; setup failure of an active required plugin rejects establishment.
+- A descriptor-free plugin added to an active session completes session setup before becoming eligible for execution. Removing it invokes session cleanup before PluginEngine membership removal.
+- Session cleanup and endpoint cleanup are distinct hooks with distinct least-capability contexts. Cleanup is attempted for every initialized plugin even when another plugin's cleanup fails.
 
 ## Observation and Telemetry
 
 - Public lifecycle and diagnostic events use the ecosystem event model.
-- Event and observer payloads exclude credentials and application values by default.
-- Listener, inspector, and telemetry failures cannot change protocol progress, operation settlement, authority, resource release, or cleanup unless installed as explicit middleware.
+- Event and observer payloads exclude credentials, application arguments, results, stream items, reactive values, and raw frames by default. They may include opaque local correlation, kinds, counts, sizes, durations, outcome classifications, and normalized errors.
+- RPC observation hooks use PluginEngine's contained observation strategy. A fatal observer failure may stop remaining observers and produce diagnostics, but cannot change protocol progress, operation settlement, authority, resource release, or cleanup.
+- Plugins that need to inspect or affect application values must install explicit middleware and thereby participate in operation outcomes.
 - High-volume frame, item, and update observations are aggregated or opt-in.
 - RPC endpoints accept optional telemetry and create a correctly scoped default when none is supplied.
 - RPC disposes owned default telemetry. Injected telemetry remains caller-owned.

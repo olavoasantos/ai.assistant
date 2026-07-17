@@ -92,9 +92,13 @@ A call requests one invocation of an authorized method or function and correlate
 
 ### Plugins
 
-RPC plugins are ordinary ecosystem plugins with RPC-specific hooks. Plugins may participate in value matching, serialization, hydration, middleware, compatibility, lifecycle, observation, and cleanup.
+RPC plugins are ordinary ecosystem plugins with RPC-specific hooks. One plugin object may combine value handling, semantic middleware, lifecycle, observation, and cleanup. Its generic plugin context remains generic; each RPC hook receives a phase-specific least-capability context.
 
-A wire-affecting plugin changes values or messages understood by the remote node. It therefore declares stable compatibility information and participates in session negotiation. Local-only middleware and observers do not affect wire compatibility.
+A plugin is wire-affecting only when it carries a wire descriptor. The descriptor declares a stable plugin identifier, locally preferred opaque protocol identifiers, required or optional status, and plugin-local value and message namespaces. Effective namespaces are qualified by the stable plugin identifier and cannot impersonate core or another plugin. Package versions and semver ranges are not wire protocols.
+
+Compatibility activates a wire plugin only when both peers declare the identifier and share a protocol identifier. A missing or incompatible required plugin rejects establishment before root delivery; an optional plugin without a common protocol remains inactive. Descriptor-free plugins are local-only and do not alter compatibility even when they provide middleware or observers.
+
+RPC automatically installs core remote-value behavior as ordinary mandatory plugins. After compatibility, the session protects every core and active wire plugin as a whole object while descriptor-free local plugins remain dynamically addable and removable. Changing endpoint wire configuration affects future sessions, never an established session's negotiated membership.
 
 ### Session Budget
 

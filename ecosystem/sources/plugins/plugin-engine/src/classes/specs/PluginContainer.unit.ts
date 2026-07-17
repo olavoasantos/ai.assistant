@@ -468,6 +468,31 @@ describe('PluginContainer', () => {
     });
   });
 
+  describe('observe() / observeSync()', () => {
+    it('records async and sync observation scopes with the observe strategy', async () => {
+      const measureCallback = vi.fn(
+        (_name: string, callback: () => unknown, _options?: {tags?: {strategy?: string}}) =>
+          callback(),
+      );
+      const telemetry = {
+        fork: () => telemetry,
+        measureCallback,
+      } as any;
+      const container = new PluginContainer<TestHooks>({telemetry});
+      container.add(createPlugin('alpha', {setup: vi.fn()}));
+
+      await container.observe({hook: 'setup', args: []});
+      container.observeSync({hook: 'setup', args: []});
+
+      expect(measureCallback).toHaveBeenCalledWith('setup', expect.any(Function), {
+        tags: {strategy: 'observe'},
+      });
+      expect(
+        measureCallback.mock.calls.filter((call) => call[2]?.tags?.strategy === 'observe'),
+      ).toHaveLength(2);
+    });
+  });
+
   describe('renderable()', () => {
     it('returns initial children when no plugins have the hook', () => {
       const container = new PluginContainer<TestHooks>({telemetry: createTestTelemetry()});

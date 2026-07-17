@@ -12,7 +12,14 @@ import {
   PLUGIN_RUNNER_PLUGIN,
   PLUGIN_RUNNER_TELEMETRY,
 } from '../constants';
-import type {CacheEntry, NormalizedHook, PluginRunnerEvents} from '../types';
+import type {
+  CacheEntry,
+  NormalizedHook,
+  PluginRunnerEvents,
+  PreparedInvocation,
+  PreparedInvocationOptions,
+  PreparedInvocationResult,
+} from '../types';
 import {PluginContext} from './PluginContext';
 
 /**
@@ -107,17 +114,12 @@ export class PluginRunner<
     options: Contracts.PluginRunnerTriggerOptions<HookMap, Name>,
   ): Promise<Awaited<ReturnType<HookMap[Name]>> | undefined> {
     this.ensureNotDisposed();
-    const hook = this[PLUGIN_RUNNER_HOOKS].get(options.hook);
-    if (hook == null) return undefined;
+    const prepared = this.prepareInvocation(options.hook, options.context);
+    if (prepared == null) return undefined;
 
-    const hookName = options.hook;
-
-    return this[PLUGIN_RUNNER_TELEMETRY].measureCallback(hookName, async () => {
-      try {
-        return await this.invokeHandler(hook, hookName, options.args, options.context);
-      } catch (thrown) {
-        return this.handleError(thrown, hook, hookName, options.args);
-      }
+    return this[PLUGIN_RUNNER_TELEMETRY].measureCallback(options.hook, async () => {
+      const result = await this.invokePrepared(prepared, options.args, {cache: true});
+      return result.value;
     });
   }
 
@@ -136,17 +138,12 @@ export class PluginRunner<
     options: Contracts.PluginRunnerTriggerOptions<HookMap, Name>,
   ): ReturnType<HookMap[Name]> | undefined {
     this.ensureNotDisposed();
-    const hook = this[PLUGIN_RUNNER_HOOKS].get(options.hook);
-    if (hook == null) return undefined;
+    const prepared = this.prepareInvocation(options.hook, options.context);
+    if (prepared == null) return undefined;
 
-    const hookName = options.hook;
-
-    return this[PLUGIN_RUNNER_TELEMETRY].measureCallback(hookName, () => {
-      try {
-        return this.invokeHandlerSync(hook, hookName, options.args, options.context);
-      } catch (thrown) {
-        return this.handleError(thrown, hook, hookName, options.args);
-      }
+    return this[PLUGIN_RUNNER_TELEMETRY].measureCallback(options.hook, () => {
+      const result = this.invokePreparedSync(prepared, options.args, {cache: true});
+      return result.value;
     }) as ReturnType<HookMap[Name]> | undefined;
   }
 
@@ -234,66 +231,106 @@ export class PluginRunner<
   }
 
   /**
-   * Prepares a hook for raw invocation by the pipe strategy.
+   * Prepares a hook and readonly context for runner-owned invocation.
    *
-   * Performs lifecycle checks and builds the context view, but does
-   * NOT invoke the handler — returns the handler + view for the
-   * caller to invoke with custom arguments (e.g. with `next` injected).
-   *
-   * @internal Used by PluginContainer for pipe/pipeSync strategies.
+   * @internal Used by PluginContainer strategies that supply custom arguments
+   * or aggregate measurement across repeated calls.
    */
   prepareInvocation(
     hookName: string,
     contextOverride?: Contracts.PluginContextOptions,
-  ): {handler: (...args: any[]) => any; view: Contracts.HookContext} | undefined {
+  ): PreparedInvocation | undefined {
     this.ensureNotDisposed();
     const hook = this[PLUGIN_RUNNER_HOOKS].get(hookName);
     if (hook == null) return undefined;
 
-    const view = this[PLUGIN_RUNNER_CONTEXT].buildReadonlyView(contextOverride);
-    return {handler: hook.handler, view};
+    return {
+      hookName,
+      hook,
+      view: this[PLUGIN_RUNNER_CONTEXT].buildReadonlyView(contextOverride),
+    };
   }
 
-  /** Invokes the hook handler (async path) with context binding and caching. */
-  private async invokeHandler(
-    hook: NormalizedHook,
-    hookName: string,
+  /**
+   * Invokes a prepared hook asynchronously with runner error and cache policy.
+   *
+   * @internal Used by PluginContainer pipe execution.
+   */
+  async invokePrepared(
+    prepared: PreparedInvocation,
     args: any[],
-    contextOverride?: Contracts.PluginContextOptions,
-  ): Promise<any> {
-    if (hook.cacheHandler != null) {
-      const cacheResult = this.resolveCache(hookName, hook.cacheHandler, args);
-      if (cacheResult.hit) return cacheResult.value;
+    options: PreparedInvocationOptions,
+  ): Promise<PreparedInvocationResult> {
+    this.ensureNotDisposed();
+    try {
+      if (options.cache && prepared.hook.cacheHandler != null) {
+        const cacheResult = this.resolveCache(prepared.hookName, prepared.hook.cacheHandler, args);
+        if (cacheResult.hit) return {recovered: false, value: cacheResult.value};
 
-      const view = this[PLUGIN_RUNNER_CONTEXT].buildReadonlyView(contextOverride);
-      const result = await hook.handler.apply(view, args);
-      this.storeCache(cacheResult.key, result, cacheResult.ttl);
-      return result;
+        const value = await prepared.hook.handler.apply(prepared.view, args);
+        this.storeCache(cacheResult.key, value, cacheResult.ttl);
+        return {recovered: false, value};
+      }
+
+      const value = await prepared.hook.handler.apply(prepared.view, args);
+      return {recovered: false, value};
+    } catch (thrown) {
+      return this.handleError(thrown, prepared.hook, prepared.hookName, args);
     }
-
-    const view = this[PLUGIN_RUNNER_CONTEXT].buildReadonlyView(contextOverride);
-    return await hook.handler.apply(view, args);
   }
 
-  /** Invokes the hook handler (sync path) with context binding and caching. */
-  private invokeHandlerSync(
-    hook: NormalizedHook,
-    hookName: string,
+  /**
+   * Invokes a prepared hook synchronously with runner error and cache policy.
+   *
+   * @internal Used by PluginContainer direct and pipe execution.
+   */
+  invokePreparedSync(
+    prepared: PreparedInvocation,
     args: any[],
-    contextOverride?: Contracts.PluginContextOptions,
-  ): any {
-    if (hook.cacheHandler != null) {
-      const cacheResult = this.resolveCache(hookName, hook.cacheHandler, args);
-      if (cacheResult.hit) return cacheResult.value;
+    options: PreparedInvocationOptions,
+  ): PreparedInvocationResult {
+    this.ensureNotDisposed();
+    let asynchronousResult = false;
+    try {
+      if (options.cache && prepared.hook.cacheHandler != null) {
+        const cacheResult = this.resolveCache(prepared.hookName, prepared.hook.cacheHandler, args);
+        if (cacheResult.hit) return {recovered: false, value: cacheResult.value};
 
-      const view = this[PLUGIN_RUNNER_CONTEXT].buildReadonlyView(contextOverride);
-      const result = hook.handler.apply(view, args);
-      this.storeCache(cacheResult.key, result, cacheResult.ttl);
-      return result;
+        const value = prepared.hook.handler.apply(prepared.view, args);
+        if (
+          value != null &&
+          (typeof value === 'object' || typeof value === 'function') &&
+          typeof (value as {then?: unknown}).then === 'function'
+        ) {
+          asynchronousResult = true;
+          void Promise.resolve(value).catch(() => undefined);
+          throw new ApplicationError({
+            message: 'Synchronous plugin execution cannot accept a promise result.',
+            code: 500,
+          });
+        }
+        this.storeCache(cacheResult.key, value, cacheResult.ttl);
+        return {recovered: false, value};
+      }
+
+      const value = prepared.hook.handler.apply(prepared.view, args);
+      if (
+        value != null &&
+        (typeof value === 'object' || typeof value === 'function') &&
+        typeof (value as {then?: unknown}).then === 'function'
+      ) {
+        asynchronousResult = true;
+        void Promise.resolve(value).catch(() => undefined);
+        throw new ApplicationError({
+          message: 'Synchronous plugin execution cannot accept a promise result.',
+          code: 500,
+        });
+      }
+      return {recovered: false, value};
+    } catch (thrown) {
+      if (asynchronousResult) throw thrown;
+      return this.handleError(thrown, prepared.hook, prepared.hookName, args);
     }
-
-    const view = this[PLUGIN_RUNNER_CONTEXT].buildReadonlyView(contextOverride);
-    return hook.handler.apply(view, args);
   }
 
   /**
@@ -308,7 +345,7 @@ export class PluginRunner<
     hook: NormalizedHook,
     hookName: string,
     args: any[],
-  ): undefined {
+  ): PreparedInvocationResult {
     if (hook.errorHandler != null) {
       try {
         const severity = hook.errorHandler(thrown, ...args);
@@ -316,7 +353,7 @@ export class PluginRunner<
           this.emit('plugin:hook.errored', {
             details: {plugin: this.name, hook: hookName, error: thrown},
           });
-          return undefined;
+          return {recovered: true, value: undefined};
         }
       } catch {
         // Error handler itself threw — escalate to fatal
@@ -371,16 +408,17 @@ export class PluginRunner<
     for (const key of Object.keys(plugin)) {
       if (key === 'name') continue;
       const raw = (plugin as Record<string, unknown>)[key];
-      if (raw == null) continue;
+      const normalized = this.normalizeHook(raw);
+      if (normalized == null) continue;
 
-      hooks.set(key, this.normalizeHook(raw));
+      hooks.set(key, normalized);
     }
 
     return hooks;
   }
 
   /** Normalizes a bare function or HookDefinition object into a NormalizedHook. */
-  private normalizeHook(raw: unknown): NormalizedHook {
+  private normalizeHook(raw: unknown): NormalizedHook | undefined {
     if (typeof raw === 'function') {
       return {
         handler: raw as (...args: any[]) => any,
@@ -391,13 +429,17 @@ export class PluginRunner<
       };
     }
 
+    if (raw == null || typeof raw !== 'object') return undefined;
+
     const obj = raw as {
-      handler: (...args: any[]) => any;
+      handler?: (...args: any[]) => any;
       order?: Contracts.HookOrder;
       errorHandler?: (thrown: unknown, ...args: any[]) => any;
       cacheHandler?: (...args: any[]) => Contracts.HookCacheOptions;
       sequential?: boolean;
     };
+
+    if (typeof obj.handler !== 'function') return undefined;
 
     return {
       handler: obj.handler,

@@ -18,13 +18,15 @@ This document is part of the normative [RPC charter](./README.md).
 - Transport closure emits one typed closure event and settles one closure promise. Nonterminal transport failures emit typed error events.
 - Transport closure, liveness failure, or explicit disconnect ends the current session.
 - A publicly established session starts active, transitions through disposing during teardown, and ends disposed. Establishing and resumable-inactive sessions are not public states.
-- Session termination rejects pending calls and promises, cancels active work and streams, removes watches, detaches transport listeners, disposes session plugin state, invalidates authority, and releases budget.
+- Session termination rejects pending calls and promises, cancels active work and streams, removes watches, detaches transport listeners, invokes every session-scoped plugin cleanup path, disposes session plugin state, invalidates authority, and releases budget.
 - Session disconnect is idempotent and converges with simultaneous transport closure or endpoint disposal without duplicate cleanup.
 - Late frames from a terminated session have no effect on a later session.
 - Reconnection creates a freshly admitted and negotiated session. Pending work and wire authority do not resume implicitly.
 - A client exposes its root synchronously only after connection establishes the session and root. Access before readiness or while disconnected fails synchronously.
 - Reconnection creates a fresh root facade. Owner-side values may survive according to retention policy and may be reissued later, but prior facades remain stale.
 - Endpoint disposal is terminal and releases endpoint-owned sessions, timers, plugins, telemetry, and transport bindings according to ownership.
+- Session and endpoint plugin setup and disposal use separate hook contexts. Session hooks receive only negotiated session capabilities; endpoint hooks receive only endpoint-scoped capabilities.
+- Wire plugins remain protected through session cleanup. Protection never prevents terminal disposal.
 - RPC always detaches transport subscriptions it created. Internally created resources are owned by RPC; caller-injected resources, including transports, remain caller-owned unless ownership transfer is explicit.
 
 ## Root Exposure Lifecycle

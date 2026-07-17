@@ -52,6 +52,17 @@ export const PLUGIN_CONTAINER_CONTEXT_FACTORY = Symbol(
 /** Internal symbol storing the container's memoized sorted hook entries. */
 export const PLUGIN_CONTAINER_SORTED = Symbol('ai.assistant:pluginContainer.sorted');
 
+/** Internal symbol storing plugin objects protected from removal. */
+export const PLUGIN_CONTAINER_PROTECTED = Symbol('ai.assistant:pluginContainer.protected');
+
+/** Internal symbol counting active bounded direct execution scopes. */
+export const PLUGIN_CONTAINER_DIRECT_SCOPES = Symbol('ai.assistant:pluginContainer.directScopes');
+
+/** Internal symbol storing removed runners awaiting direct-scope completion. */
+export const PLUGIN_CONTAINER_DEFERRED_RUNNERS = Symbol(
+  'ai.assistant:pluginContainer.deferredRunners',
+);
+
 /** Internal symbol storing the container's frozen flag. */
 export const PLUGIN_CONTAINER_FROZEN = Symbol('ai.assistant:pluginContainer.frozen');
 

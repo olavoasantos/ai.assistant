@@ -1,5 +1,10 @@
 import type {ErrorSeverity} from '@ai.assistant/contracts/error';
-import type {HookCacheOptions, HookOrder, Plugin} from '@ai.assistant/contracts/plugins';
+import type {
+  HookCacheOptions,
+  HookContext,
+  HookOrder,
+  Plugin,
+} from '@ai.assistant/contracts/plugins';
 
 /** Event map for {@link PluginRunner} lifecycle events. */
 export interface PluginRunnerEvents {
@@ -11,10 +16,12 @@ export interface PluginRunnerEvents {
 export interface PluginContainerEvents {
   'plugin:added': {plugin: string};
   'plugin:removed': {plugin: string};
+  'plugin:protected': {plugin: string};
   'plugin:container.forked': {childSize: number};
   'plugin:container.frozen': undefined;
   'plugin:container.disposed': undefined;
   'plugin:hook.errored': {hook: string; error: unknown};
+  'plugin:observation.errored': {hook: string; error: unknown};
 }
 
 /** Normalized form of a hook — bare functions and object forms unified. */
@@ -33,6 +40,42 @@ export interface NormalizedHook {
 
   /** Whether this hook opts into sequential execution within a parallel strategy. */
   sequential: boolean;
+}
+
+/** A prepared hook invocation retaining runner-owned execution semantics. */
+export interface PreparedInvocation {
+  /** Hook name used for caching and diagnostics. */
+  hookName: string;
+
+  /** Normalized hook definition. */
+  hook: NormalizedHook;
+
+  /** Readonly plugin context prepared for the enclosing execution scope. */
+  view: HookContext;
+}
+
+/** Options controlling a prepared runner invocation. */
+export interface PreparedInvocationOptions {
+  /** Whether configured hook caching applies to this invocation. */
+  cache: boolean;
+}
+
+/** Result from a prepared invocation, including recovery information. */
+export interface PreparedInvocationResult {
+  /** Whether the hook failed under a recoverable error policy. */
+  recovered: boolean;
+
+  /** Hook return value, or `undefined` after recovery. */
+  value: any;
+}
+
+/** One prepared runner entry inside a bounded direct execution scope. */
+export interface PreparedRunnerEntry {
+  /** Runner that owns execution policy and caching. */
+  runner: any;
+
+  /** Prepared hook and readonly context. */
+  invocation: PreparedInvocation;
 }
 
 /** A resolved entry in the sorted hook list for container execution. */

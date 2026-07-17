@@ -7,6 +7,10 @@ This document is part of the normative [RPC charter](./README.md).
 - RPC sends no frames before the application admits a transport.
 - Admission means the application has completed its required authentication, origin, remote identity, and deployment checks outside RPC.
 - After admission, the local and remote nodes establish protocol, transport-representation, required wire-plugin, remote-value, and finite-budget compatibility before application traffic begins.
+- Wire plugins identify themselves with stable plugin identifiers and ordered opaque protocol identifiers. Package versions and semver predicates are not negotiated compatibility.
+- A missing or protocol-incompatible required wire plugin rejects establishment. An optional plugin activates only when both peers offer it and share a protocol identifier.
+- Active plugin value and message namespaces are qualified by plugin identity, remain distinct from core namespaces, and are fixed with the selected protocol for the session.
+- Descriptor-free local plugins are omitted from negotiation and cannot change the compatibility result.
 - The root and all application or plugin-defined values remain undisclosed until compatibility succeeds.
 - Incompatible or malformed negotiation terminates the attempted session without creating application authority.
 - Reconnection repeats application admission and RPC compatibility as a new session.

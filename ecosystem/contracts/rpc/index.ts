@@ -1,5 +1,6 @@
 import type {ApplicationError} from '../error';
 import type {EventEmitter} from '../events';
+import type {RpcWirePluginCompatibility} from './plugins';
 import type {
   RpcCallback,
   RpcCopy,
@@ -17,6 +18,8 @@ import type {
   RpcUnsupportedValue,
   RpcValueProjections,
 } from './values';
+
+export type * from './plugins';
 
 export type {
   RpcCallback,
@@ -227,6 +230,9 @@ export interface RpcCompatibility {
 
   /** The transport representation used by the session. */
   readonly representation: RpcTransportRepresentation;
+
+  /** Immutable active wire-plugin selections for this session. */
+  readonly plugins: readonly RpcWirePluginCompatibility[];
 }
 
 /** Immutable usage and limit values for one session resource category. */

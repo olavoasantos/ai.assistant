@@ -70,11 +70,15 @@ This document is part of the normative [RPC charter](./README.md).
 ## Plugin-Defined Values
 
 - Plugins may define copied values, remote-reference kinds, control messages, or lifecycle behavior through RPC plugin-engine hooks.
+- Serialization uses one synchronous first-result hook that both tests ownership and produces a concrete plugin-qualified serialized envelope. Returning `undefined` means the plugin does not own the value.
+- Hydration uses a wrapped success result so a plugin may legitimately hydrate to JavaScript `undefined` without being mistaken for an unhandled value.
+- Serialization walks top-down, hydration walks bottom-up, and recursive traversal is exposed as a narrow capability rather than a mutable session or authority registry.
+- Plugin value control uses plugin-qualified semantic messages and verifies live reference authority before plugin dispatch.
 - Core and plugin-defined values compose recursively in either direction.
 - A wire plugin defines how its owner-side value type projects to a consumer type; unsupported values do not pass through the core projection optimistically.
 - Plugin message and value namespaces cannot impersonate core kinds or another plugin.
 - Required wire plugins must be compatible before their values are transmitted.
-- Wire-affecting plugin membership is fixed for the lifetime of the negotiated session.
+- Core and negotiated wire plugins are protected from removal for the lifetime of the session. Descriptor-free local plugin membership may remain dynamic.
 - Plugin state and traffic consume explicit session budget.
 - A plugin cannot grant access to a reference that was not issued to the session.
 

@@ -259,6 +259,20 @@ describe('PluginRunner', () => {
       expect(hook!.sequential).toBe(false);
     });
 
+    it('ignores enumerable metadata without a callable handler', () => {
+      const runner = new PluginRunner<TestHooks>(
+        {
+          name: 'my-plugin',
+          wire: {protocol: 'wire-1'},
+          boot: () => 'ok',
+        } as any,
+        {telemetry},
+      );
+
+      expect(runner.has('boot')).toBe(true);
+      expect((runner as any).has('wire')).toBe(false);
+    });
+
     it('object hooks preserve order, errorHandler, cacheHandler, and sequential', () => {
       const handler = vi.fn(() => 'ok');
       const errorHandler = vi.fn(() => 'fatal' as const);
